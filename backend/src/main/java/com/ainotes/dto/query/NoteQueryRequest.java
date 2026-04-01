@@ -20,6 +20,11 @@ public class NoteQueryRequest {
     private String keyword;
 
     /**
+     * 空间ID（为空或0表示查询个人笔记）
+     */
+    private Long spaceId;
+
+    /**
      * 文件夹ID
      */
     private Long folderId;

@@ -19,6 +19,14 @@
       <div class="menu-section">
         <div
           class="menu-item"
+          :class="{ active: isActiveMenu('/spaces') || isActiveMenu('/spaces/') }"
+          @click="router.push('/spaces')"
+        >
+          <el-icon><FolderOpened /></el-icon>
+          <span v-if="!isCollapse">团队空间</span>
+        </div>
+        <div
+          class="menu-item"
           :class="{ active: isActiveMenu('/ai/chat') }"
           @click="router.push('/ai/chat')"
         >
@@ -87,7 +95,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessageBox } from 'element-plus';
-import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound } from '@element-plus/icons-vue';
+import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import FolderTree from '@/components/common/FolderTree.vue';

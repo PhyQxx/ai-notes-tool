@@ -5,3 +5,5 @@ export * from './folder';
 export * from './ai';
 export * from './version';
 export * from './export';
+export * from './space';
+export * from './comment';

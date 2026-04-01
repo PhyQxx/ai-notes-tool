@@ -8,7 +8,9 @@ import com.ainotes.dto.query.NoteQueryRequest;
 import com.ainotes.dto.request.CreateNoteRequest;
 import com.ainotes.dto.request.UpdateNoteRequest;
 import com.ainotes.entity.Note;
+import com.ainotes.entity.SpaceMember;
 import com.ainotes.mapper.NoteMapper;
+import com.ainotes.mapper.SpaceMemberMapper;
 import com.ainotes.service.NoteService;
 import com.ainotes.service.NoteVersionService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,15 @@ public class NoteServiceImpl implements NoteService {
 
     private final NoteMapper noteMapper;
     private final NoteVersionService noteVersionService;
+    private final SpaceMemberMapper spaceMemberMapper;
+
+    /**
+     * 角色权限等级
+     */
+    private static final int ROLE_LEVEL_OWNER = 100;
+    private static final int ROLE_LEVEL_ADMIN = 80;
+    private static final int ROLE_LEVEL_EDITOR = 60;
+    private static final int ROLE_LEVEL_VIEWER = 40;
 
     /**
      * 记录每个笔记的上次自动保存时间
@@ -56,6 +67,13 @@ public class NoteServiceImpl implements NoteService {
         note.setViewCount(0);
         note.setStatus(1);
 
+        // 如果指定了空间ID，检查权限
+        if (request.getSpaceId() != null && request.getSpaceId() > 0) {
+            // 检查用户是否有该空间的编辑权限
+            checkSpacePermission(userId, request.getSpaceId(), "editor");
+            note.setSpaceId(request.getSpaceId());
+        }
+
         noteMapper.insert(note);
         log.info("创建笔记成功，笔记ID：{}", note.getId());
 
@@ -71,15 +89,13 @@ public class NoteServiceImpl implements NoteService {
             throw new BusinessException("笔记不存在");
         }
 
-        // 校验权限
-        if (!note.getUserId().equals(userId)) {
-            throw new BusinessException("无权限操作该笔记");
-        }
-
         // 校验状态
         if (note.getStatus() == 0) {
             throw new BusinessException("笔记已被删除");
         }
+
+        // 检查权限
+        checkNotePermission(userId, note);
 
         // 保存旧内容，用于判断是否需要自动保存版本
         String oldContent = note.getContent();
@@ -175,10 +191,8 @@ public class NoteServiceImpl implements NoteService {
             throw new BusinessException("笔记不存在");
         }
 
-        // 校验权限
-        if (!note.getUserId().equals(userId)) {
-            throw new BusinessException("无权限操作该笔记");
-        }
+        // 检查权限
+        checkNotePermission(userId, note);
 
         // 软删除
         note.setStatus(0);
@@ -194,10 +208,8 @@ public class NoteServiceImpl implements NoteService {
             throw new BusinessException("笔记不存在");
         }
 
-        // 校验权限
-        if (!note.getUserId().equals(userId)) {
-            throw new BusinessException("无权限查看该笔记");
-        }
+        // 检查权限
+        checkNotePermission(userId, note);
 
         // 校验状态
         if (note.getStatus() == 0) {
@@ -215,8 +227,18 @@ public class NoteServiceImpl implements NoteService {
     public IPage<Note> listNotes(Long userId, NoteQueryRequest query) {
         // 构建查询条件
         LambdaQueryWrapper<Note> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Note::getUserId, userId);
         queryWrapper.eq(Note::getStatus, 1);
+
+        // 如果指定了空间ID，查询该空间的笔记
+        if (query.getSpaceId() != null && query.getSpaceId() > 0) {
+            // 检查用户是否有该空间的查看权限
+            checkSpacePermission(userId, query.getSpaceId(), "viewer");
+            queryWrapper.eq(Note::getSpaceId, query.getSpaceId());
+        } else {
+            // 查询个人笔记
+            queryWrapper.eq(Note::getUserId, userId);
+            queryWrapper.eq(Note::getSpaceId, 0); // spaceId为0或null表示个人笔记
+        }
 
         // 关键词搜索（标题、内容、标签）
         if (StringUtils.hasText(query.getKeyword())) {
@@ -343,10 +365,8 @@ public class NoteServiceImpl implements NoteService {
             throw new BusinessException("笔记不存在");
         }
 
-        // 校验权限
-        if (!note.getUserId().equals(userId)) {
-            throw new BusinessException("无权限操作该笔记");
-        }
+        // 检查权限
+        checkNotePermission(userId, note);
 
         // 校验状态
         if (note.getStatus() == 0) {
@@ -368,10 +388,8 @@ public class NoteServiceImpl implements NoteService {
             throw new BusinessException("笔记不存在");
         }
 
-        // 校验权限
-        if (!note.getUserId().equals(userId)) {
-            throw new BusinessException("无权限操作该笔记");
-        }
+        // 检查权限
+        checkNotePermission(userId, note);
 
         // 校验状态
         if (note.getStatus() == 0) {
@@ -382,6 +400,74 @@ public class NoteServiceImpl implements NoteService {
         note.setIsTop(note.getIsTop() == 1 ? 0 : 1);
         noteMapper.updateById(note);
         log.info("切换笔记置顶状态，笔记ID：{}，置顶状态：{}", noteId, note.getIsTop());
+    }
+
+    /**
+     * 检查笔记权限
+     *
+     * @param userId 用户ID
+     * @param note   笔记
+     */
+    private void checkNotePermission(Long userId, Note note) {
+        // 个人笔记，只有作者可以操作
+        if (note.getSpaceId() == null || note.getSpaceId() == 0) {
+            if (!note.getUserId().equals(userId)) {
+                throw new BusinessException("无权限操作该笔记");
+            }
+        } else {
+            // 空间笔记，检查用户是否有该空间的编辑权限
+            checkSpacePermission(userId, note.getSpaceId(), "editor");
+        }
+    }
+
+    /**
+     * 检查空间权限
+     *
+     * @param userId        用户ID
+     * @param spaceId       空间ID
+     * @param requiredRole  要求的最低角色
+     */
+    private void checkSpacePermission(Long userId, Long spaceId, String requiredRole) {
+        LambdaQueryWrapper<SpaceMember> memberWrapper = new LambdaQueryWrapper<>();
+        memberWrapper.eq(SpaceMember::getSpaceId, spaceId);
+        memberWrapper.eq(SpaceMember::getUserId, userId);
+        SpaceMember member = spaceMemberMapper.selectOne(memberWrapper);
+
+        if (member == null) {
+            throw new BusinessException("不是该空间的成员");
+        }
+
+        if (member.getStatus() == 0) {
+            throw new BusinessException("账号已被禁用");
+        }
+
+        int userLevel = getRoleLevel(member.getRole());
+        int requiredLevel = getRoleLevel(requiredRole);
+
+        if (userLevel < requiredLevel) {
+            throw new BusinessException("权限不足");
+        }
+    }
+
+    /**
+     * 获取角色等级
+     *
+     * @param role 角色
+     * @return 角色等级
+     */
+    private int getRoleLevel(String role) {
+        switch (role) {
+            case "owner":
+                return ROLE_LEVEL_OWNER;
+            case "admin":
+                return ROLE_LEVEL_ADMIN;
+            case "editor":
+                return ROLE_LEVEL_EDITOR;
+            case "viewer":
+                return ROLE_LEVEL_VIEWER;
+            default:
+                return 0;
+        }
     }
 
 }

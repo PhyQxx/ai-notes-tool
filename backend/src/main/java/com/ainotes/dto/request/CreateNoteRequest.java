@@ -31,6 +31,11 @@ public class CreateNoteRequest {
     private String contentType;
 
     /**
+     * 空间ID（为空或0表示个人笔记）
+     */
+    private Long spaceId;
+
+    /**
      * 文件夹ID
      */
     private Long folderId;

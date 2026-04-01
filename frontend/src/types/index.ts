@@ -129,3 +129,38 @@ export interface VersionCompare {
   newContent: string;
   diffHtml: string;
 }
+
+// 团队协作相关
+export interface Space {
+  id: number;
+  name: string;
+  description: string;
+  ownerName: string;
+  memberCount: number;
+  createdAt: string;
+  updatedAt: string;
+  myRole: string;
+}
+
+export interface SpaceMember {
+  id: number;
+  userId: number;
+  username: string;
+  nickname: string;
+  avatar: string;
+  role: string;
+  joinedAt: string;
+}
+
+export interface Comment {
+  id: number;
+  noteId: number;
+  userId: number;
+  username: string;
+  nickname: string;
+  avatar: string;
+  parentId: number;
+  content: string;
+  createdAt: string;
+  replies: Comment[];
+}

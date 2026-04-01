@@ -37,6 +37,10 @@
           <el-icon><Clock /></el-icon>
           版本历史
         </el-button>
+        <el-button @click="showCommentPanel = true">
+          <el-icon><ChatDotRound /></el-icon>
+          评论 ({{ commentCount }})
+        </el-button>
         <ExportMenu :note-id="noteId" :note-title="noteTitle" />
         <el-button type="primary" @click="showAIAssistant = true">
           <el-icon><ChatDotRound /></el-icon>
@@ -105,6 +109,16 @@
       :note-id="noteId"
       @restore="handleVersionRestore"
     />
+
+    <!-- 评论面板 -->
+    <el-drawer
+      v-model="showCommentPanel"
+      title="评论"
+      direction="btt"
+      :size="400"
+    >
+      <CommentPanel v-if="noteId" :note-id="noteId" />
+    </el-drawer>
   </div>
 </template>
 
@@ -118,6 +132,7 @@ import RichTextEditor from '@/components/editor/RichTextEditor.vue';
 import AIAssistant from '@/components/ai/AIAssistant.vue';
 import VersionPanel from '@/components/editor/VersionPanel.vue';
 import ExportMenu from '@/components/editor/ExportMenu.vue';
+import CommentPanel from '@/components/note/CommentPanel.vue';
 import type { NoteVersion } from '@/types';
 
 const route = useRoute();
@@ -138,6 +153,8 @@ const inputValue = ref('');
 const tagInputRef = ref();
 const showAIAssistant = ref(false);
 const showVersionPanel = ref(false);
+const showCommentPanel = ref(false);
+const commentCount = ref(0);
 const editorMode = ref<'markdown' | 'richtext'>('markdown');
 
 // 防抖自动保存

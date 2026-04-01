@@ -43,6 +43,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ai/AIChatView.vue')
       },
       {
+        path: 'spaces',
+        name: 'Spaces',
+        component: () => import('@/views/space/SpaceListView.vue')
+      },
+      {
+        path: 'spaces/:id',
+        name: 'SpaceDetail',
+        component: () => import('@/views/space/SpaceDetailView.vue')
+      },
+      {
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/SettingsView.vue')

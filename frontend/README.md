@@ -1,234 +1,455 @@
 # AI笔记工具 - 前端项目
 
-## 项目简介
+> 基于Vue 3 + TypeScript + Element Plus的现代化笔记应用前端
 
-这是一个现代化的AI笔记工具前端项目，使用Vue 3 + TypeScript + Element Plus构建。
+## 📋 项目简介
 
-## 技术栈
+AI笔记工具前端是一个单页应用(SPA)，提供友好的用户界面和流畅的交互体验，支持Markdown和富文本双模式编辑，集成了DeepSeek和GLM等AI服务。
 
-- **框架**: Vue 3.5.30
-- **语言**: TypeScript 5.9.3
-- **UI组件库**: Element Plus 2.13.6
-- **状态管理**: Pinia 3.0.4
-- **路由**: Vue Router 5.0.4
-- **HTTP客户端**: Axios 1.14.0
-- **Markdown编辑器**: Vditor 3.11.2
-- **富文本编辑器**: Tiptap 2.13.2
-- **构建工具**: Vite 8.0.1
-- **CSS预处理**: Sass 1.98.0
+## 🛠️ 技术栈
 
-## 功能特性
+### 核心框架
+- **Vue 3** - 渐进式JavaScript框架
+- **TypeScript** - JavaScript的超集，提供类型安全
+- **Vite** - 下一代前端构建工具
 
-### 已实现功能
+### UI框架
+- **Element Plus** - Vue 3组件库
+- **@element-plus/icons-vue** - Element Plus图标库
 
-1. **用户认证**
-   - 用户注册/登录
-   - JWT Token认证
-   - 个人信息管理
+### 状态管理与路由
+- **Pinia** - Vue官方状态管理库
+- **Vue Router** - Vue.js官方路由
 
-2. **笔记管理**
-   - 笔记CRUD操作
-   - 文件夹分类管理
-   - 标签管理
-   - 收藏/置顶功能
+### 编辑器
+- **Vditor** - 浏览器端的Markdown编辑器
+- **Tiptap** - 富文本编辑器
 
-3. **编辑器**
-   - Markdown编辑器（Vditor）
-   - 富文本编辑器（Tiptap）
-   - 编辑器模式切换
-   - 实时自动保存
+### 工具库
+- **Axios** - HTTP客户端
+- **Day.js** - 轻量级日期处理库
+- **Sass** - CSS预处理器
 
-4. **AI智能体**
-   - AI对话功能
-   - AI内容生成
-   - 多AI提供商支持（DeepSeek、GLM）
-
-### 新增高级功能（本次实现）
-
-1. **版本管理**
-   - 版本历史查看
-   - 手动创建版本快照
-   - 版本对比功能
-   - 版本恢复功能
-   - 版本删除功能
-
-2. **导出功能**
-   - 导出为Markdown (.md)
-   - 导出为PDF (.pdf)
-   - 导出为Word (.docx)
-
-3. **搜索增强**
-   - 关键词搜索
-   - 文件夹筛选
-   - 时间筛选（今天/本周/本月）
-   - 排序功能（更新时间/创建时间/标题）
-   - 搜索历史记录
-   - 搜索结果高亮
-
-4. **富文本编辑器**
-   - 完整的工具栏
-   - 文本格式（加粗、斜体、下划线、删除线）
-   - 标题（H1、H2、H3）
-   - 列表（有序、无序）
-   - 对齐方式（左、中、右）
-   - 插入图片/链接/水平线
-   - 撤销/重做
-   - 图片上传支持
-
-## 项目结构
+## 📁 项目结构
 
 ```
 frontend/
+├── public/                 # 静态资源
+│   └── favicon.ico
 ├── src/
-│   ├── api/              # API接口
-│   │   ├── index.ts      # API导出
-│   │   ├── auth.ts       # 认证API
-│   │   ├── note.ts       # 笔记API
-│   │   ├── folder.ts     # 文件夹API
-│   │   ├── ai.ts         # AI API
-│   │   ├── version.ts    # 版本管理API
-│   │   └── export.ts     # 导出API
-│   ├── assets/           # 静态资源
-│   ├── components/       # 公共组件
-│   │   ├── ai/           # AI组件
-│   │   ├── common/       # 通用组件
-│   │   │   ├── NoteCard.vue
-│   │   │   ├── FolderTree.vue
-│   │   │   └── MarkdownRenderer.vue
-│   │   ├── editor/       # 编辑器组件
-│   │   │   ├── MarkdownEditor.vue
-│   │   │   ├── RichTextEditor.vue
-│   │   │   ├── VersionPanel.vue
-│   │   │   ├── VersionCompare.vue
-│   │   │   └── ExportMenu.vue
-│   │   └── index.ts
-│   ├── layouts/          # 布局组件
-│   ├── router/           # 路由配置
-│   ├── stores/           # 状态管理
-│   │   ├── index.ts
+│   ├── api/               # API接口定义
 │   │   ├── auth.ts
 │   │   ├── note.ts
-│   │   └── ai.ts
-│   ├── types/            # TypeScript类型定义
+│   │   ├── folder.ts
+│   │   ├── ai.ts
 │   │   └── index.ts
-│   ├── utils/            # 工具函数
-│   │   ├── request.ts    # HTTP请求封装
-│   │   └── storage.ts    # 本地存储封装
-│   ├── views/            # 页面组件
-│   │   ├── HomeView.vue
-│   │   ├── SettingsView.vue
-│   │   ├── auth/
-│   │   ├── notes/
-│   │   └── ai/
-│   ├── App.vue           # 根组件
-│   └── main.ts           # 入口文件
-├── package.json          # 依赖配置
-├── vite.config.ts        # Vite配置
-├── tsconfig.json         # TypeScript配置
-└── index.html            # HTML模板
+│   ├── assets/            # 资源文件
+│   │   └── logo.svg
+│   ├── components/        # 公共组件
+│   │   ├── common/        # 通用组件
+│   │   ├── editor/        # 编辑器组件
+│   │   └── ai/            # AI相关组件
+│   ├── layouts/           # 布局组件
+│   │   └── DefaultLayout.vue
+│   ├── router/            # 路由配置
+│   │   └── index.ts
+│   ├── stores/            # Pinia状态管理
+│   │   ├── auth.ts
+│   │   ├── note.ts
+│   │   ├── folder.ts
+│   │   └── ai.ts
+│   ├── styles/            # 全局样式
+│   │   ├── global.scss
+│   │   ├── variables.scss
+│   │   └── element-plus.scss
+│   ├── types/             # TypeScript类型定义
+│   │   ├── api.ts
+│   │   ├── note.ts
+│   │   └── index.ts
+│   ├── utils/             # 工具函数
+│   │   ├── request.ts
+│   │   ├── storage.ts
+│   │   └── validate.ts
+│   ├── views/             # 页面组件
+│   │   ├── auth/          # 认证相关页面
+│   │   ├── notes/         # 笔记相关页面
+│   │   ├── folders/       # 文件夹相关页面
+│   │   └── settings/      # 设置页面
+│   ├── App.vue            # 根组件
+│   └── main.ts            # 入口文件
+├── .env.development       # 开发环境配置
+├── .env.production        # 生产环境配置
+├── index.html             # HTML模板
+├── package.json           # 依赖配置
+├── tsconfig.json          # TypeScript配置
+└── vite.config.ts         # Vite配置
 ```
 
-## 安装依赖
+## 🚀 快速开始
+
+### 环境要求
+
+- **Node.js**: >= 18.0.0
+- **npm**: >= 8.0.0 或 **pnpm**: >= 7.0.0
+
+### 安装依赖
 
 ```bash
-cd frontend
+# 使用npm
 npm install
+
+# 或使用pnpm（推荐）
+pnpm install
 ```
 
-## 开发运行
+### 开发模式
 
 ```bash
+# 启动开发服务器
 npm run dev
+
+# 或使用pnpm
+pnpm dev
 ```
 
-项目将在 `http://localhost:5173` 启动。
+访问 http://localhost:3000
 
-## 生产构建
+### 生产构建
 
 ```bash
+# 构建生产版本
 npm run build
+
+# 或使用pnpm
+pnpm build
 ```
 
-构建产物将输出到 `dist/` 目录。
+构建产物将输出到 `dist` 目录。
 
-## 代码规范
+### 预览生产构建
 
-- 使用 Vue 3 Composition API + setup语法糖
-- TypeScript严格模式
-- ESLint代码检查（待配置）
-- Prettier代码格式化（待配置）
+```bash
+# 预览生产构建
+npm run preview
 
-## API接口说明
-
-所有API请求都经过统一的HTTP客户端封装，位于 `src/utils/request.ts`。
-
-### 基础URL
-
-开发环境：`http://localhost:8080/api`
-
-生产环境：根据部署配置
-
-### 请求格式
-
-所有请求都会自动添加JWT Token到请求头：
-
-```typescript
-{
-  headers: {
-    'Authorization': 'Bearer <token>'
-  }
-}
+# 或使用pnpm
+pnpm preview
 ```
 
-### 响应格式
+## 🔧 开发指南
 
-```typescript
-{
-  code: number,        // 状态码，200表示成功
-  message: string,     // 响应消息
-  data: T,            // 响应数据
-  timestamp: number    // 时间戳
-}
-```
+### 环境变量
 
-## 环境变量
+项目支持通过环境变量进行配置，相关文件位于项目根目录：
 
-在项目根目录创建 `.env` 文件：
+- `.env.development` - 开发环境配置
+- `.env.production` - 生产环境配置
 
-```env
+支持的环境变量：
+
+```bash
+# API基础URL
 VITE_API_BASE_URL=http://localhost:8080/api
+
+# 应用标题
+VITE_APP_TITLE=AI笔记工具
+
+# 文件上传大小限制（MB）
+VITE_MAX_UPLOAD_SIZE=50
 ```
 
-## 注意事项
+### 代码规范
 
-1. **Tiptap安装**
-   - 新增的富文本编辑器依赖Tiptap，请确保正确安装：
-   ```bash
-   npm install @tiptap/vue-3 @tiptap/starter-kit @tiptap/extension-underline @tiptap/extension-text-align @tiptap/extension-image @tiptap/extension-link @tiptap/extension-placeholder
-   ```
+#### 命名规范
+- **组件文件**: PascalCase（如：`NoteList.vue`）
+- **工具函数文件**: camelCase（如：`request.ts`）
+- **TypeScript文件**: camelCase（如：`api.ts`）
+- **变量/函数**: camelCase（如：`getUserInfo`）
+- **常量**: UPPER_SNAKE_CASE（如：`API_BASE_URL`）
+- **组件名**: PascalCase（如：`<NoteList />`）
 
-2. **Markdown编辑器**
-   - 使用Vditor作为Markdown编辑器，已内置在项目中
+#### 注释规范
+使用JSDoc风格注释：
 
-3. **图片上传**
-   - 图片上传功能需要后端API支持
-   - 上传接口：`POST /upload/image`
-   - 返回格式：`{ url: string }`
+```typescript
+/**
+ * 获取用户信息
+ * @param userId 用户ID
+ * @returns 用户信息对象
+ */
+async function getUserInfo(userId: number): Promise<UserInfo> {
+  // ...
+}
+```
 
-4. **导出功能**
-   - 导出功能需要后端API支持
-   - 返回类型为Blob
+### 组件开发
 
-## 待优化项
+#### 创建新组件
 
-- [ ] 添加ESLint和Prettier配置
-- [ ] 添加单元测试
-- [ ] 添加E2E测试
-- [ ] 性能优化
-- [ ] PWA支持
-- [ ] 多语言支持
-- [ ] 主题定制
+1. 在 `src/components` 下创建组件文件
+2. 组件使用 `<script setup lang="ts">` 语法
+3. 添加必要的注释和类型定义
+4. 导出组件供其他模块使用
 
-## 联系方式
+示例：
 
-如有问题，请联系开发团队。
+```vue
+<template>
+  <div class="my-component">
+    <!-- 组件内容 -->
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+
+// Props定义
+interface Props {
+  title: string;
+  count?: number;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  count: 0,
+});
+
+// Emits定义
+const emit = defineEmits<{
+  (e: 'update', value: string): void;
+  (e: 'delete', id: number): void;
+}>();
+
+// 响应式数据
+const loading = ref(false);
+
+// 计算属性
+const displayTitle = computed(() => {
+  return `${props.title} (${props.count})`;
+});
+
+// 方法
+const handleUpdate = (value: string) => {
+  emit('update', value);
+};
+</script>
+
+<style scoped lang="scss">
+.my-component {
+  // 样式
+}
+</style>
+```
+
+### API调用
+
+使用Axios进行HTTP请求，配置在 `src/utils/request.ts` 中：
+
+```typescript
+import { request } from '@/utils/request';
+import type { UserInfo } from '@/types';
+
+export async function getUserInfo(userId: number): Promise<UserInfo> {
+  return request.get(`/api/users/${userId}`);
+}
+
+export async function updateUser(userId: number, data: Partial<UserInfo>): Promise<UserInfo> {
+  return request.put(`/api/users/${userId}`, data);
+}
+```
+
+### 状态管理
+
+使用Pinia进行状态管理，Store定义在 `src/stores` 目录下：
+
+```typescript
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import { getUserInfo as fetchUserInfo } from '@/api/auth';
+import type { UserInfo } from '@/types';
+
+export const useAuthStore = defineStore('auth', () => {
+  // State
+  const userInfo = ref<UserInfo | null>(null);
+  const token = ref<string | null>(localStorage.getItem('token'));
+
+  // Getters
+  const isLoggedIn = computed(() => !!token.value);
+
+  // Actions
+  async function getUserInfo() {
+    if (!token.value) return null;
+    const data = await fetchUserInfo();
+    userInfo.value = data;
+    return data;
+  }
+
+  function logout() {
+    userInfo.value = null;
+    token.value = null;
+    localStorage.removeItem('token');
+  }
+
+  return {
+    userInfo,
+    token,
+    isLoggedIn,
+    getUserInfo,
+    logout,
+  };
+});
+```
+
+### 路由配置
+
+路由配置在 `src/router/index.ts` 中：
+
+```typescript
+import { createRouter, createWebHistory } from 'vue-router';
+import type { RouteRecordRaw } from 'vue-router';
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    component: () => import('@/layouts/DefaultLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'Home',
+        component: () => import('@/views/notes/NoteList.vue'),
+      },
+      {
+        path: 'notes/:id',
+        name: 'NoteDetail',
+        component: () => import('@/views/notes/NoteDetail.vue'),
+      },
+    ],
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/auth/Login.vue'),
+  },
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+});
+
+export default router;
+```
+
+## 📦 构建部署
+
+### 构建优化
+
+项目配置了以下构建优化：
+
+1. **代码分割**：自动分割第三方依赖和业务代码
+2. **Tree Shaking**：自动移除未使用的代码
+3. **压缩优化**：生产环境自动压缩代码
+4. **懒加载**：路由级别懒加载
+5. **打包分析**：生成打包分析报告
+
+### Nginx部署示例
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    root /path/to/dist;
+    index index.html;
+
+    # Gzip压缩
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    # SPA路由支持
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API代理
+    location /api {
+        proxy_pass http://backend:8080/api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+### Docker部署
+
+```dockerfile
+FROM node:18-alpine as builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+## 🧪 测试
+
+```bash
+# 运行单元测试（待配置）
+npm run test
+
+# 运行端到端测试（待配置）
+npm run test:e2e
+```
+
+## 📝 开发计划
+
+### 已完成
+- [x] 项目初始化
+- [x] 基础框架搭建
+- [x] 路由配置
+- [x] 状态管理
+- [x] UI组件库集成
+- [x] API请求封装
+
+### 进行中
+- [ ] 认证模块开发
+- [ ] 笔记CRUD功能
+- [ ] 编辑器集成
+- [ ] AI对话功能
+
+### 待完成
+- [ ] 文件上传功能
+- [ ] 搜索功能
+- [ ] 导出功能
+- [ ] 版本管理功能
+- [ ] 团队协作功能
+
+## 🤝 贡献指南
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 提交 Pull Request
+
+## 📄 许可证
+
+MIT License
+
+## 📞 联系方式
+
+- 项目地址: https://github.com/yourusername/ai-notes-tool
+- 问题反馈: https://github.com/yourusername/ai-notes-tool/issues
+
+---
+
+**维护团队**: AI Notes Team
+**最后更新**: 2026-04-01

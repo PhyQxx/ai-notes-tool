@@ -22,9 +22,9 @@ public enum SpaceRole {
     ADMIN("admin", "管理员"),
 
     /**
-     * 成员
+     * 编辑者
      */
-    MEMBER("member", "成员"),
+    EDITOR("editor", "编辑者"),
 
     /**
      * 查看者
