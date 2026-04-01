@@ -33,6 +33,11 @@
             </el-icon>
           </el-button>
         </el-button-group>
+        <el-button @click="showVersionPanel = true">
+          <el-icon><Clock /></el-icon>
+          版本历史
+        </el-button>
+        <ExportMenu :note-id="noteId" :note-title="noteTitle" />
         <el-button type="primary" @click="showAIAssistant = true">
           <el-icon><ChatDotRound /></el-icon>
           AI助手
@@ -66,10 +71,24 @@
     </div>
 
     <div class="editor-container">
+      <div class="editor-mode-switch">
+        <el-radio-group v-model="editorMode" @change="handleEditorModeChange">
+          <el-radio-button value="markdown">Markdown</el-radio-button>
+          <el-radio-button value="richtext">富文本</el-radio-button>
+        </el-radio-group>
+      </div>
+
       <MarkdownEditor
+        v-if="editorMode === 'markdown'"
         v-model="noteContent"
         :height="editorHeight"
         @save="handleAutoSave"
+      />
+
+      <RichTextEditor
+        v-else
+        v-model="noteContent"
+        :height="editorHeight"
       />
     </div>
 
@@ -78,6 +97,13 @@
       v-model:visible="showAIAssistant"
       :note-id="noteId"
       @insert="handleInsertContent"
+    />
+
+    <!-- 版本历史面板 -->
+    <VersionPanel
+      v-model:visible="showVersionPanel"
+      :note-id="noteId"
+      @restore="handleVersionRestore"
     />
   </div>
 </template>
@@ -88,7 +114,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { useNoteStore } from '@/stores/note';
 import MarkdownEditor from '@/components/editor/MarkdownEditor.vue';
+import RichTextEditor from '@/components/editor/RichTextEditor.vue';
 import AIAssistant from '@/components/ai/AIAssistant.vue';
+import VersionPanel from '@/components/editor/VersionPanel.vue';
+import ExportMenu from '@/components/editor/ExportMenu.vue';
+import type { NoteVersion } from '@/types';
 
 const route = useRoute();
 const router = useRouter();
@@ -107,6 +137,8 @@ const inputVisible = ref(false);
 const inputValue = ref('');
 const tagInputRef = ref();
 const showAIAssistant = ref(false);
+const showVersionPanel = ref(false);
+const editorMode = ref<'markdown' | 'richtext'>('markdown');
 
 // 防抖自动保存
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -212,6 +244,21 @@ const handleInsertContent = (content: string) => {
   showSaveStatus('success', '内容已插入');
 };
 
+const handleEditorModeChange = async (mode: 'markdown' | 'richtext') => {
+  try {
+    await saveNote();
+    showSaveStatus('success', '模式切换成功');
+  } catch (error) {
+    console.error('切换编辑器模式失败:', error);
+  }
+};
+
+const handleVersionRestore = (version: NoteVersion) => {
+  noteTitle.value = version.title;
+  noteContent.value = version.content;
+  showSaveStatus('success', '已恢复到版本 #' + version.versionNo);
+};
+
 // 监听内容变化
 watch([noteTitle, noteContent, noteTags], () => {
   handleAutoSave();
@@ -226,11 +273,15 @@ onMounted(async () => {
         noteTitle.value = currentNote.value.title;
         noteContent.value = currentNote.value.content;
         noteTags.value = currentNote.value.tags || [];
+        editorMode.value = (currentNote.value.contentType as 'markdown' | 'richtext') || 'markdown';
       }
     } catch (error) {
       console.error('加载笔记失败:', error);
       ElMessage.error('加载笔记失败');
     }
+  } else {
+    // 新建笔记，默认使用Markdown模式
+    editorMode.value = 'markdown';
   }
 });
 
@@ -288,6 +339,16 @@ onBeforeUnmount(() => {
   .editor-container {
     flex: 1;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
+    .editor-mode-switch {
+      display: flex;
+      justify-content: center;
+      padding: 8px;
+      background-color: var(--el-bg-color-page);
+      border-bottom: 1px solid var(--el-border-color);
+    }
   }
 }
 </style>

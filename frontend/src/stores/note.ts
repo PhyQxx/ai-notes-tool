@@ -15,15 +15,20 @@ import {
   toggleTop as toggleTopApi,
   createFolder as createFolderApi,
   updateFolder as updateFolderApi,
-  deleteFolder as deleteFolderApi
+  deleteFolder as deleteFolderApi,
+  listVersions,
+  createVersion as createVersionApi,
+  restoreVersion as restoreVersionApi,
+  deleteVersion as deleteVersionApi
 } from '../api';
-import type { Note, Folder } from '../types';
+import type { Note, Folder, NoteVersion } from '../types';
 
 export const useNoteStore = defineStore('note', () => {
   // 状态
   const notes = ref<Note[]>([]);
   const currentNote = ref<Note | null>(null);
   const folders = ref<Folder[]>([]);
+  const versions = ref<NoteVersion[]>([]);
   const loading = ref(false);
   const searchKeyword = ref('');
   const total = ref(0);
@@ -250,10 +255,64 @@ export const useNoteStore = defineStore('note', () => {
     }
   }
 
+  /**
+   * 获取版本列表
+   */
+  async function fetchVersions(noteId: number): Promise<void> {
+    try {
+      const response = await listVersions(noteId);
+      versions.value = response.data || [];
+    } catch (error) {
+      console.error('获取版本列表失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 创建版本快照
+   */
+  async function createVersion(noteId: number, remark?: string): Promise<void> {
+    try {
+      await createVersionApi(noteId, remark);
+      await fetchVersions(noteId);
+    } catch (error) {
+      console.error('创建版本失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 恢复版本
+   */
+  async function restoreVersion(noteId: number, versionId: number): Promise<void> {
+    try {
+      await restoreVersionApi(noteId, versionId);
+      await fetchNote(noteId);
+      await fetchVersions(noteId);
+    } catch (error) {
+      console.error('恢复版本失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 删除版本
+   */
+  async function deleteVersion(noteId: number, versionId: number): Promise<void> {
+    try {
+      await deleteVersionApi(noteId, versionId);
+      await fetchVersions(noteId);
+    } catch (error) {
+      console.error('删除版本失败:', error);
+      throw error;
+    }
+  }
+
   return {
     notes,
     currentNote,
     folders,
+    versions,
     loading,
     searchKeyword,
     total,
@@ -270,6 +329,10 @@ export const useNoteStore = defineStore('note', () => {
     toggleTop,
     createFolder,
     updateFolder,
-    deleteFolder
+    deleteFolder,
+    fetchVersions,
+    createVersion,
+    restoreVersion,
+    deleteVersion
   };
 });

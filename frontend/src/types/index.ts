@@ -111,3 +111,21 @@ export interface ApiResponse<T> {
   data: T;
   timestamp: number;
 }
+
+// 版本管理相关
+export interface NoteVersion {
+  id: number;
+  noteId: number;
+  versionNo: number;
+  title: string;
+  content: string;
+  remark: string;
+  createdBy: number;
+  createdAt: string;
+}
+
+export interface VersionCompare {
+  oldContent: string;
+  newContent: string;
+  diffHtml: string;
+}

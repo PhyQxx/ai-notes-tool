@@ -10,11 +10,16 @@ import com.ainotes.dto.request.UpdateNoteRequest;
 import com.ainotes.entity.Note;
 import com.ainotes.mapper.NoteMapper;
 import com.ainotes.service.NoteService;
+import com.ainotes.service.NoteVersionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 笔记服务实现类
@@ -28,6 +33,12 @@ import org.springframework.util.StringUtils;
 public class NoteServiceImpl implements NoteService {
 
     private final NoteMapper noteMapper;
+    private final NoteVersionService noteVersionService;
+
+    /**
+     * 记录每个笔记的上次自动保存时间
+     */
+    private final Map<Long, LocalDateTime> lastAutoSaveTimeMap = new ConcurrentHashMap<>();
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -70,6 +81,10 @@ public class NoteServiceImpl implements NoteService {
             throw new BusinessException("笔记已被删除");
         }
 
+        // 保存旧内容，用于判断是否需要自动保存版本
+        String oldContent = note.getContent();
+        int oldLength = oldContent != null ? oldContent.length() : 0;
+
         // 更新字段
         if (StringUtils.hasText(request.getTitle())) {
             note.setTitle(request.getTitle());
@@ -87,8 +102,68 @@ public class NoteServiceImpl implements NoteService {
             note.setTags(request.getTags());
         }
 
+        // 更新笔记
         noteMapper.updateById(note);
+
+        // 检查是否需要自动保存版本
+        checkAndAutoSaveVersion(noteId, oldContent);
+
         log.info("更新笔记成功，笔记ID：{}", noteId);
+    }
+
+    /**
+     * 检查并自动保存版本
+     *
+     * @param noteId     笔记ID
+     * @param oldContent 旧内容
+     */
+    private void checkAndAutoSaveVersion(Long noteId, String oldContent) {
+        // 获取当前笔记
+        Note note = noteMapper.selectById(noteId);
+        if (note == null || note.getContent() == null) {
+            return;
+        }
+
+        String newContent = note.getContent();
+        int newLength = newContent.length();
+        int oldLength = oldContent != null ? oldContent.length() : 0;
+
+        // 获取上次自动保存时间
+        LocalDateTime lastAutoSaveTime = lastAutoSaveTimeMap.get(noteId);
+        LocalDateTime now = LocalDateTime.now();
+
+        // 计算时间差（分钟）
+        long minutesSinceLastSave = lastAutoSaveTime != null ?
+                java.time.Duration.between(lastAutoSaveTime, now).toMinutes() : Long.MAX_VALUE;
+
+        // 计算内容变化比例
+        double changeRate = 0.0;
+        if (oldLength > 0 || newLength > 0) {
+            int maxLength = Math.max(oldLength, newLength);
+            int diff = Math.abs(newLength - oldLength);
+            changeRate = maxLength > 0 ? (double) diff / maxLength : 0.0;
+        }
+
+        // 判断是否需要自动保存
+        boolean needAutoSave = false;
+        if (minutesSinceLastSave >= 10) {
+            // 距离上次自动保存超过10分钟
+            needAutoSave = true;
+        } else if (changeRate > 0.05) {
+            // 内容变化超过5%
+            needAutoSave = true;
+        }
+
+        if (needAutoSave) {
+            try {
+                noteVersionService.autoSaveVersion(noteId);
+                lastAutoSaveTimeMap.put(noteId, now);
+                log.info("自动保存笔记版本，笔记ID：{}，时间间隔：{}分钟，内容变化率：{}%",
+                        noteId, minutesSinceLastSave, changeRate * 100);
+            } catch (Exception e) {
+                log.error("自动保存笔记版本失败，笔记ID：{}", noteId, e);
+            }
+        }
     }
 
     @Override
@@ -143,6 +218,17 @@ public class NoteServiceImpl implements NoteService {
         queryWrapper.eq(Note::getUserId, userId);
         queryWrapper.eq(Note::getStatus, 1);
 
+        // 关键词搜索（标题、内容、标签）
+        if (StringUtils.hasText(query.getKeyword())) {
+            queryWrapper.and(wrapper -> wrapper
+                    .like(Note::getTitle, query.getKeyword())
+                    .or()
+                    .like(Note::getContent, query.getKeyword())
+                    .or()
+                    .like(Note::getTags, query.getKeyword())
+            );
+        }
+
         // 文件夹筛选
         if (query.getFolderId() != null) {
             queryWrapper.eq(Note::getFolderId, query.getFolderId());
@@ -163,13 +249,62 @@ public class NoteServiceImpl implements NoteService {
             queryWrapper.eq(Note::getIsTop, query.getIsTop());
         }
 
-        // 排序：置顶优先，然后按更新时间倒序
-        queryWrapper.orderByDesc(Note::getIsTop);
-        queryWrapper.orderByDesc(Note::getUpdatedAt);
+        // 时间范围筛选
+        if (query.getStartTime() != null) {
+            queryWrapper.ge(Note::getCreatedAt, query.getStartTime());
+        }
+        if (query.getEndTime() != null) {
+            queryWrapper.le(Note::getCreatedAt, query.getEndTime());
+        }
+
+        // 排序
+        applySorting(queryWrapper, query);
 
         // 分页查询
         Page<Note> page = new Page<>(query.getPage(), query.getSize());
         return noteMapper.selectPage(page, queryWrapper);
+    }
+
+    /**
+     * 应用排序
+     *
+     * @param queryWrapper 查询条件
+     * @param query        查询请求
+     */
+    private void applySorting(LambdaQueryWrapper<Note> queryWrapper, NoteQueryRequest query) {
+        String sortBy = query.getSortBy();
+        String sortOrder = query.getSortOrder();
+
+        // 置顶优先
+        queryWrapper.orderByDesc(Note::getIsTop);
+
+        // 根据排序字段和方向排序
+        boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+
+        switch (sortBy) {
+            case "createdAt":
+                if (isAsc) {
+                    queryWrapper.orderByAsc(Note::getCreatedAt);
+                } else {
+                    queryWrapper.orderByDesc(Note::getCreatedAt);
+                }
+                break;
+            case "viewCount":
+                if (isAsc) {
+                    queryWrapper.orderByAsc(Note::getViewCount);
+                } else {
+                    queryWrapper.orderByDesc(Note::getViewCount);
+                }
+                break;
+            case "updatedAt":
+            default:
+                if (isAsc) {
+                    queryWrapper.orderByAsc(Note::getUpdatedAt);
+                } else {
+                    queryWrapper.orderByDesc(Note::getUpdatedAt);
+                }
+                break;
+        }
     }
 
     @Override
@@ -179,16 +314,19 @@ public class NoteServiceImpl implements NoteService {
         queryWrapper.eq(Note::getUserId, userId);
         queryWrapper.eq(Note::getStatus, 1);
 
-        // 关键词搜索（标题或内容）
+        // 关键词搜索（标题、内容、标签）
         if (StringUtils.hasText(keyword)) {
             queryWrapper.and(wrapper -> wrapper
                     .like(Note::getTitle, keyword)
                     .or()
                     .like(Note::getContent, keyword)
+                    .or()
+                    .like(Note::getTags, keyword)
             );
         }
 
-        // 排序：按更新时间倒序
+        // 排序：按更新时间倒序，置顶优先
+        queryWrapper.orderByDesc(Note::getIsTop);
         queryWrapper.orderByDesc(Note::getUpdatedAt);
 
         // 分页查询（默认每页20条）
