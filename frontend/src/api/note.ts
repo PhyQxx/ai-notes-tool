@@ -1,0 +1,77 @@
+/**
+ * 笔记相关API
+ */
+import { http } from '../utils/request';
+import type { Note, PageResult } from '../types';
+
+/**
+ * 获取笔记列表
+ */
+export function listNotes(params: {
+  page?: number;
+  size?: number;
+  folderId?: number;
+  keyword?: string;
+}): Promise<PageResult<Note>> {
+  return http.get('/notes', { params });
+}
+
+/**
+ * 获取笔记详情
+ */
+export function getNote(id: number): Promise<Note> {
+  return http.get(`/notes/${id}`);
+}
+
+/**
+ * 创建笔记
+ */
+export function createNote(data: {
+  title: string;
+  content: string;
+  contentType: string;
+  folderId?: number;
+  tags?: string[];
+}): Promise<Note> {
+  return http.post('/notes', data);
+}
+
+/**
+ * 更新笔记
+ */
+export function updateNote(id: number, data: Partial<Note>): Promise<Note> {
+  return http.put(`/notes/${id}`, data);
+}
+
+/**
+ * 删除笔记
+ */
+export function deleteNote(id: number): Promise<void> {
+  return http.delete(`/notes/${id}`);
+}
+
+/**
+ * 搜索笔记
+ */
+export function searchNotes(keyword: string, params?: {
+  page?: number;
+  size?: number;
+}): Promise<PageResult<Note>> {
+  return http.get('/notes/search', {
+    params: { keyword, ...params }
+  });
+}
+
+/**
+ * 收藏/取消收藏笔记
+ */
+export function toggleFavorite(id: number): Promise<void> {
+  return http.post(`/notes/${id}/favorite`);
+}
+
+/**
+ * 置顶/取消置顶笔记
+ */
+export function toggleTop(id: number): Promise<void> {
+  return http.post(`/notes/${id}/top`);
+}

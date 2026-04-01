@@ -31,7 +31,7 @@ minio:
 # JWT Development Configuration
 jwt:
   secret: ai-notes-dev-secret-key-2024
-  expiration: 604800000
+  expiration: 7200000  # 2小时
 
 # Logging Development Configuration
 logging:

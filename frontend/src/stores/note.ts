@@ -1,0 +1,275 @@
+/**
+ * 笔记状态管理
+ */
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+import {
+  listNotes,
+  getNote as getNoteApi,
+  createNote as createNoteApi,
+  updateNote as updateNoteApi,
+  deleteNote as deleteNoteApi,
+  searchNotes,
+  getFolderTree,
+  toggleFavorite as toggleFavoriteApi,
+  toggleTop as toggleTopApi,
+  createFolder as createFolderApi,
+  updateFolder as updateFolderApi,
+  deleteFolder as deleteFolderApi
+} from '../api';
+import type { Note, Folder } from '../types';
+
+export const useNoteStore = defineStore('note', () => {
+  // 状态
+  const notes = ref<Note[]>([]);
+  const currentNote = ref<Note | null>(null);
+  const folders = ref<Folder[]>([]);
+  const loading = ref(false);
+  const searchKeyword = ref('');
+  const total = ref(0);
+  const currentPage = ref(1);
+  const pageSize = ref(10);
+
+  // Actions
+  /**
+   * 获取笔记列表
+   */
+  async function fetchNotes(params?: {
+    page?: number;
+    size?: number;
+    folderId?: number;
+  }): Promise<void> {
+    loading.value = true;
+    try {
+      const result = await listNotes({
+        page: params?.page || currentPage.value,
+        size: params?.size || pageSize.value,
+        folderId: params?.folderId
+      });
+      notes.value = result.records;
+      total.value = result.total;
+      currentPage.value = result.page;
+    } catch (error) {
+      console.error('获取笔记列表失败:', error);
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 获取笔记详情
+   */
+  async function fetchNote(id: number): Promise<void> {
+    loading.value = true;
+    try {
+      const note = await getNoteApi(id);
+      currentNote.value = note;
+    } catch (error) {
+      console.error('获取笔记详情失败:', error);
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 创建笔记
+   */
+  async function createNote(data: {
+    title: string;
+    content: string;
+    contentType: string;
+    folderId?: number;
+  }): Promise<Note> {
+    loading.value = true;
+    try {
+      const note = await createNoteApi(data);
+      notes.value.unshift(note);
+      return note;
+    } catch (error) {
+      console.error('创建笔记失败:', error);
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 更新笔记
+   */
+  async function updateNote(id: number, data: Partial<Note>): Promise<void> {
+    loading.value = true;
+    try {
+      const updatedNote = await updateNoteApi(id, data);
+      // 更新列表中的笔记
+      const index = notes.value.findIndex(n => n.id === id);
+      if (index !== -1) {
+        notes.value[index] = updatedNote;
+      }
+      // 更新当前笔记
+      if (currentNote.value?.id === id) {
+        currentNote.value = updatedNote;
+      }
+    } catch (error) {
+      console.error('更新笔记失败:', error);
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 删除笔记
+   */
+  async function deleteNote(id: number): Promise<void> {
+    loading.value = true;
+    try {
+      await deleteNoteApi(id);
+      notes.value = notes.value.filter(n => n.id !== id);
+      if (currentNote.value?.id === id) {
+        currentNote.value = null;
+      }
+    } catch (error) {
+      console.error('删除笔记失败:', error);
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 搜索笔记
+   */
+  async function search(keyword: string): Promise<void> {
+    loading.value = true;
+    searchKeyword.value = keyword;
+    try {
+      const result = await searchNotes(keyword, {
+        page: 1,
+        size: pageSize.value
+      });
+      notes.value = result.records;
+      total.value = result.total;
+      currentPage.value = 1;
+    } catch (error) {
+      console.error('搜索笔记失败:', error);
+      throw error;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 获取文件夹树
+   */
+  async function fetchFolders(): Promise<void> {
+    try {
+      const tree = await getFolderTree();
+      folders.value = tree;
+    } catch (error) {
+      console.error('获取文件夹树失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 收藏/取消收藏笔记
+   */
+  async function toggleFavorite(id: number): Promise<void> {
+    try {
+      await toggleFavoriteApi(id);
+      const note = notes.value.find(n => n.id === id);
+      if (note) {
+        note.isFavorite = !note.isFavorite;
+      }
+    } catch (error) {
+      console.error('切换收藏状态失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 置顶/取消置顶笔记
+   */
+  async function toggleTop(id: number): Promise<void> {
+    try {
+      await toggleTopApi(id);
+      const note = notes.value.find(n => n.id === id);
+      if (note) {
+        note.isTop = !note.isTop;
+      }
+    } catch (error) {
+      console.error('切换置顶状态失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 创建文件夹
+   */
+  async function createFolder(data: {
+    name: string;
+    parentId?: number;
+  }): Promise<void> {
+    try {
+      await createFolderApi(data);
+      await fetchFolders();
+    } catch (error) {
+      console.error('创建文件夹失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 更新文件夹
+   */
+  async function updateFolder(id: number, data: {
+    name?: string;
+    parentId?: number;
+  }): Promise<void> {
+    try {
+      await updateFolderApi(id, data);
+      await fetchFolders();
+    } catch (error) {
+      console.error('更新文件夹失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 删除文件夹
+   */
+  async function deleteFolder(id: number): Promise<void> {
+    try {
+      await deleteFolderApi(id);
+      await fetchFolders();
+    } catch (error) {
+      console.error('删除文件夹失败:', error);
+      throw error;
+    }
+  }
+
+  return {
+    notes,
+    currentNote,
+    folders,
+    loading,
+    searchKeyword,
+    total,
+    currentPage,
+    pageSize,
+    fetchNotes,
+    fetchNote,
+    createNote,
+    updateNote,
+    deleteNote,
+    search,
+    fetchFolders,
+    toggleFavorite,
+    toggleTop,
+    createFolder,
+    updateFolder,
+    deleteFolder
+  };
+});
