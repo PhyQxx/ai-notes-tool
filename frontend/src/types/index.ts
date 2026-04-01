@@ -51,6 +51,52 @@ export interface Folder {
   children?: Folder[];
 }
 
+// AI相关
+export interface AIChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface AIConversation {
+  id: number;
+  noteId?: number;
+  aiProvider: string;
+  aiModel: string;
+  title: string;
+  messages: AIChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AIChatRequest {
+  noteId?: number;
+  provider: string;
+  model: string;
+  message: string;
+  conversationId?: number;
+}
+
+export interface AIGenerateRequest {
+  noteId: number;
+  provider: string;
+  model: string;
+  prompt: string;
+  type: 'summarize' | 'optimize' | 'expand' | 'rewrite' | 'continue';
+}
+
+export interface AIConfig {
+  provider: string;
+  model: string;
+  deepseekApiKey?: string;
+  glmApiKey?: string;
+}
+
+export interface AIProviderInfo {
+  name: string;
+  label: string;
+  models: string[];
+}
+
 // 通用
 export interface PageResult<T> {
   records: T[];

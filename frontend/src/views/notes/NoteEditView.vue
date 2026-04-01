@@ -33,6 +33,10 @@
             </el-icon>
           </el-button>
         </el-button-group>
+        <el-button type="primary" @click="showAIAssistant = true">
+          <el-icon><ChatDotRound /></el-icon>
+          AI助手
+        </el-button>
         <el-button type="primary" @click="handleSave">保存</el-button>
       </div>
     </div>
@@ -68,6 +72,13 @@
         @save="handleAutoSave"
       />
     </div>
+
+    <!-- AI助手侧边面板 -->
+    <AIAssistant
+      v-model:visible="showAIAssistant"
+      :note-id="noteId"
+      @insert="handleInsertContent"
+    />
   </div>
 </template>
 
@@ -77,6 +88,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { useNoteStore } from '@/stores/note';
 import MarkdownEditor from '@/components/editor/MarkdownEditor.vue';
+import AIAssistant from '@/components/ai/AIAssistant.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -94,6 +106,7 @@ const editorHeight = ref('calc(100vh - 180px)');
 const inputVisible = ref(false);
 const inputValue = ref('');
 const tagInputRef = ref();
+const showAIAssistant = ref(false);
 
 // 防抖自动保存
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -192,6 +205,11 @@ const saveNote = async () => {
 
 const handleBack = () => {
   router.back();
+};
+
+const handleInsertContent = (content: string) => {
+  noteContent.value += '\n\n' + content;
+  showSaveStatus('success', '内容已插入');
 };
 
 // 监听内容变化

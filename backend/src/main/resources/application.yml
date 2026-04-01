@@ -51,6 +51,24 @@ jwt:
   secret: ai-notes-secret-key-2024
   expiration: 7200000  # 2小时
 
+# AI Configuration
+ai:
+  deepseek:
+    base-url: https://api.deepseek.com/v1
+    api-key: ${DEEPSEEK_API_KEY:}
+    default-model: deepseek-chat
+    models:
+      - deepseek-chat
+      - deepseek-coder
+  glm:
+    base-url: https://open.bigmodel.cn/api/paas/v4
+    api-key: ${GLM_API_KEY:}
+    default-model: glm-4-flash
+    models:
+      - glm-4
+      - glm-4-flash
+      - glm-3-turbo
+
 # Logging Configuration
 logging:
   level:

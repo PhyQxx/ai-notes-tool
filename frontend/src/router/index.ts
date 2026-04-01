@@ -38,6 +38,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/notes/NoteEditView.vue')
       },
       {
+        path: 'ai/chat',
+        name: 'AIChat',
+        component: () => import('@/views/ai/AIChatView.vue')
+      },
+      {
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/SettingsView.vue')

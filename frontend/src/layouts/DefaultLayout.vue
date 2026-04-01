@@ -16,6 +16,17 @@
         <FolderTree :is-collapse="isCollapse" />
       </div>
 
+      <div class="menu-section">
+        <div
+          class="menu-item"
+          :class="{ active: isActiveMenu('/ai/chat') }"
+          @click="router.push('/ai/chat')"
+        >
+          <el-icon><ChatDotRound /></el-icon>
+          <span v-if="!isCollapse">AI助手</span>
+        </div>
+      </div>
+
       <div class="sidebar-footer">
         <el-button text @click="toggleCollapse">
           <el-icon>
@@ -76,6 +87,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessageBox } from 'element-plus';
+import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import FolderTree from '@/components/common/FolderTree.vue';
@@ -120,6 +132,11 @@ const handleLogout = async () => {
   } catch (error) {
     // 用户取消
   }
+};
+
+// 检查菜单是否激活
+const isActiveMenu = (path: string) => {
+  return router.currentRoute.value.path === path;
 };
 
 onMounted(async () => {
@@ -167,6 +184,33 @@ onMounted(async () => {
         font-size: 12px;
         color: var(--el-text-color-secondary);
         margin-bottom: 8px;
+      }
+    }
+
+    .menu-section {
+      padding: 8px 16px;
+      border-top: 1px solid var(--el-border-color);
+      border-bottom: 1px solid var(--el-border-color);
+
+      .menu-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--el-text-color-primary);
+        font-size: 14px;
+
+        &:hover {
+          background-color: var(--el-fill-color-light);
+        }
+
+        &.active {
+          background-color: var(--el-color-primary-light-9);
+          color: var(--el-color-primary);
+        }
       }
     }
 
