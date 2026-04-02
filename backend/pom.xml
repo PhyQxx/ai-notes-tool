@@ -23,6 +23,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <lombok.version>1.18.38</lombok.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <minio.version>8.5.7</minio.version>
         <jjwt.version>0.12.3</jjwt.version>
@@ -130,9 +131,23 @@
         <!-- PDF导出 -->
         <dependency>
             <groupId>com.itextpdf</groupId>
-            <artifactId>itext7-core</artifactId>
+            <artifactId>kernel</artifactId>
             <version>7.2.5</version>
-            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>layout</artifactId>
+            <version>7.2.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>html2pdf</artifactId>
+            <version>4.0.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>font-asian</artifactId>
+            <version>7.2.5</version>
         </dependency>
 
         <!-- Word导出 -->
@@ -150,7 +165,7 @@
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
-            <artifactId>extension-gfm-tables</artifactId>
+            <artifactId>commonmark-ext-gfm-tables</artifactId>
             <version>0.21.0</version>
         </dependency>
 
@@ -181,6 +196,19 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>

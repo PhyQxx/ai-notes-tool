@@ -77,6 +77,7 @@ public class Note implements Serializable {
     /**
      * 状态：1-正常，0-删除(软删除)
      */
+    @TableLogic
     private Integer status;
 
     /**

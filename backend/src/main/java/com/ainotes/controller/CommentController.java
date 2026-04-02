@@ -73,7 +73,7 @@ public class CommentController {
     public Result<Void> deleteComment(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         commentService.deleteComment(userId, id);
-        return Result.success("删除成功");
+        return Result.success("删除成功", null);
     }
 
 }

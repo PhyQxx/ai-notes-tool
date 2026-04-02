@@ -102,7 +102,7 @@ public class NoteVersionController {
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         noteVersionService.restoreVersion(userId, noteId, versionId);
-        return Result.success("恢复版本成功");
+        return Result.success("恢复版本成功", null);
     }
 
     /**
@@ -140,7 +140,7 @@ public class NoteVersionController {
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         noteVersionService.deleteVersion(userId, noteId, versionId);
-        return Result.success("删除版本成功");
+        return Result.success("删除版本成功", null);
     }
 
 }

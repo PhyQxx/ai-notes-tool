@@ -83,7 +83,7 @@ public class FolderController {
     public Result<Void> updateFolder(@PathVariable Long id, @RequestParam String name, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         folderService.updateFolder(userId, id, name);
-        return Result.success("更新成功");
+        return Result.success("更新成功", null);
     }
 
     /**
@@ -97,7 +97,7 @@ public class FolderController {
     public Result<Void> deleteFolder(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         folderService.deleteFolder(userId, id);
-        return Result.success("删除成功");
+        return Result.success("删除成功", null);
     }
 
 }

@@ -86,7 +86,7 @@ public class SpaceController {
                                     Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         spaceService.updateSpace(userId, id, request);
-        return Result.success("更新成功");
+        return Result.success("更新成功", null);
     }
 
     /**
@@ -100,7 +100,7 @@ public class SpaceController {
     public Result<Void> deleteSpace(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         spaceService.deleteSpace(userId, id);
-        return Result.success("删除成功");
+        return Result.success("删除成功", null);
     }
 
     /**
@@ -130,7 +130,7 @@ public class SpaceController {
                                      Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         spaceService.inviteMember(userId, id, request);
-        return Result.success("邀请成功");
+        return Result.success("邀请成功", null);
     }
 
     /**
@@ -146,7 +146,7 @@ public class SpaceController {
                                       Authentication authentication) {
         Long currentUserId = (Long) authentication.getPrincipal();
         spaceService.removeMember(currentUserId, id, userId);
-        return Result.success("移除成功");
+        return Result.success("移除成功", null);
     }
 
     /**
@@ -164,7 +164,7 @@ public class SpaceController {
                                          Authentication authentication) {
         Long currentUserId = (Long) authentication.getPrincipal();
         spaceService.updateMemberRole(currentUserId, id, userId, request);
-        return Result.success("修改成功");
+        return Result.success("修改成功", null);
     }
 
     /**
@@ -178,7 +178,7 @@ public class SpaceController {
     public Result<Void> leaveSpace(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         spaceService.leaveSpace(userId, id);
-        return Result.success("退出成功");
+        return Result.success("退出成功", null);
     }
 
 }

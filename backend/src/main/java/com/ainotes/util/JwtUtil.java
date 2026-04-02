@@ -129,6 +129,24 @@ public class JwtUtil {
     }
 
     /**
+     * 验证Token是否为指定类型
+     *
+     * @param token     Token
+     * @param tokenType 期望的Token类型（access/refresh）
+     * @return true-有效且类型匹配，false-无效或类型不匹配
+     */
+    public boolean validateTokenWithType(String token, String tokenType) {
+        try {
+            Claims claims = parseToken(token);
+            String type = claims.get("type", String.class);
+            return tokenType.equals(type);
+        } catch (Exception e) {
+            log.error("Token验证失败：{}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * 解析Token
      *
      * @param token Token

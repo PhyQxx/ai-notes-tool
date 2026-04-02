@@ -1,24 +1,23 @@
 package com.ainotes.service.impl;
 
-import com.alibaba.fastjson2.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ainotes.ai.AIProvider;
 import com.ainotes.ai.AIProviderFactory;
+import com.ainotes.common.exception.BusinessException;
 import com.ainotes.dto.request.AIChatRequest;
-import com.ainotes.dto.request.AIGenerateRequest;
 import com.ainotes.dto.request.AIConfigUpdateRequest;
+import com.ainotes.dto.request.AIGenerateRequest;
 import com.ainotes.dto.response.AIChatResponse;
 import com.ainotes.dto.response.AIConfigResponse;
 import com.ainotes.entity.AIConversation;
 import com.ainotes.entity.AIConversation.AiMessage;
 import com.ainotes.entity.Note;
-import com.ainotes.common.exception.BusinessException;
 import com.ainotes.mapper.AIConversationMapper;
 import com.ainotes.service.AIService;
 import com.ainotes.service.NoteService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -30,7 +29,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * AI服务实现类

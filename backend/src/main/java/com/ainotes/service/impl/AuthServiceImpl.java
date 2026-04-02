@@ -104,8 +104,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse refreshToken(String refreshToken) {
-        // 验证Token
-        if (!jwtUtil.validateToken(refreshToken)) {
+        // 验证Token且必须是refresh类型
+        if (!jwtUtil.validateTokenWithType(refreshToken, "refresh")) {
             throw new BusinessException("Refresh Token无效或已过期");
         }
 

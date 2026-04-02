@@ -96,7 +96,7 @@ public class AuthController {
     public Result<Void> updateProfile(@RequestBody User user, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         authService.updateProfile(userId, user);
-        return Result.success("更新成功");
+        return Result.success();
     }
 
 }

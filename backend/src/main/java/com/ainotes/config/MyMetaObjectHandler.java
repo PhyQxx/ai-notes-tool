@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @Component
-public class MetaObjectHandler implements MetaObjectHandler {
+public class MyMetaObjectHandler implements MetaObjectHandler {
 
     /**
      * 插入时自动填充

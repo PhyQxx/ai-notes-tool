@@ -86,7 +86,7 @@ public class NoteController {
     public Result<Void> updateNote(@PathVariable Long id, @Valid @RequestBody UpdateNoteRequest request, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         noteService.updateNote(userId, id, request);
-        return Result.success("更新成功");
+        return Result.success("更新成功", null);
     }
 
     /**
@@ -100,7 +100,7 @@ public class NoteController {
     public Result<Void> deleteNote(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         noteService.deleteNote(userId, id);
-        return Result.success("删除成功");
+        return Result.success("删除成功", null);
     }
 
     /**
@@ -128,7 +128,7 @@ public class NoteController {
     public Result<Void> toggleFavorite(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         noteService.toggleFavorite(userId, id);
-        return Result.success("操作成功");
+        return Result.success("操作成功", null);
     }
 
     /**
@@ -142,7 +142,7 @@ public class NoteController {
     public Result<Void> toggleTop(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         noteService.toggleTop(userId, id);
-        return Result.success("操作成功");
+        return Result.success("操作成功", null);
     }
 
 }

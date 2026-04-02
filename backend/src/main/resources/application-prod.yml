@@ -30,7 +30,7 @@ minio:
 
 # JWT Production Configuration
 jwt:
-  secret: ${JWT_SECRET:ai-notes-prod-secret-key-2024}
+  secret: ${JWT_SECRET:ai-notes-prod-secret-key-2024-at-least-32chars}
   expiration: 86400000
 
 # Logging Production Configuration

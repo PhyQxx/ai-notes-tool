@@ -1,7 +1,6 @@
 package com.ainotes.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 
 import java.io.Serializable;

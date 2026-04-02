@@ -107,7 +107,7 @@ public class MarkdownUtil {
      */
     public static byte[] htmlToPdf(String html) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        HtmlConverter.convertToPdf(html.getBytes(StandardCharsets.UTF_8), outputStream);
+        HtmlConverter.convertToPdf(html, outputStream);
         return outputStream.toByteArray();
     }
 

@@ -97,7 +97,7 @@ public class FileController {
     public Result<Void> deleteFile(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         fileService.deleteFile(userId, id);
-        return Result.success("删除成功");
+        return Result.success("删除成功", null);
     }
 
 }

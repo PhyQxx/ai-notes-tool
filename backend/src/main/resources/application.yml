@@ -49,7 +49,6 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
-      logic-delete-field: status
       logic-delete-value: 0
       logic-not-delete-value: 1
 
@@ -68,7 +67,7 @@ minio:
 
 # JWT Configuration
 jwt:
-  secret: ai-notes-secret-key-2024
+  secret: ai-notes-secret-key-2024-must-be-at-least-32-chars
   expiration: 7200000  # 2小时
 
 # AI Configuration

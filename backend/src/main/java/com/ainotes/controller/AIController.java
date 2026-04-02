@@ -122,7 +122,7 @@ public class AIController {
     public Result<Void> deleteConversation(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         aiService.deleteConversation(userId, id);
-        return Result.success("删除成功");
+        return Result.success("删除成功", null);
     }
 
     /**
@@ -149,7 +149,7 @@ public class AIController {
     public Result<Void> updateConfig(@Valid @RequestBody AIConfigUpdateRequest request, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         aiService.updateConfig(userId, request);
-        return Result.success("配置更新成功");
+        return Result.success("配置更新成功", null);
     }
 
     /**
