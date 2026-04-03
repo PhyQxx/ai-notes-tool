@@ -77,6 +77,14 @@
         </div>
 
         <div class="header-right">
+          <el-tooltip :content="themeStore.mode === 'light' ? '浅色模式' : themeStore.mode === 'dark' ? '深色模式' : '跟随系统'" placement="bottom">
+            <el-button text circle @click="cycleThemeMode">
+              <el-icon :size="18">
+                <Moon v-if="themeStore.getEffectiveTheme() === 'dark'" />
+                <Sunny v-else />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
           <NotificationBell />
           <el-dropdown trigger="click">
             <div class="user-info">
@@ -112,10 +120,11 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessageBox } from 'element-plus';
-import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star } from '@element-plus/icons-vue';
+import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { useNotificationStore } from '@/stores/notification';
+import { useThemeStore } from '@/stores/theme';
 import { getToken } from '@/utils/storage';
 import wsClient from '@/utils/websocket';
 import FolderTree from '@/components/common/FolderTree.vue';
@@ -124,6 +133,7 @@ import NotificationBell from '@/components/common/NotificationBell.vue';
 const router = useRouter();
 const authStore = useAuthStore();
 const noteStore = useNoteStore();
+const themeStore = useThemeStore();
 
 const isCollapse = ref(false);
 const searchKeyword = ref('');
@@ -133,6 +143,13 @@ const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726
 // 切换侧边栏
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value;
+};
+
+// 切换主题（light → dark → system 循环）
+const cycleThemeMode = () => {
+  const modes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
+  const current = modes.indexOf(themeStore.mode);
+  themeStore.setMode(modes[(current + 1) % 3]);
 };
 
 // 新建笔记
@@ -298,6 +315,45 @@ onMounted(async () => {
       padding: 24px;
       overflow-y: auto;
     }
+  }
+
+  .command-results {
+    margin-top: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+
+    .command-item {
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: var(--el-fill-color-light);
+      }
+
+      .command-item-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--el-text-color-primary);
+        margin-bottom: 4px;
+      }
+
+      .command-item-preview {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .command-empty {
+    text-align: center;
+    padding: 24px;
+    color: var(--el-text-color-placeholder);
+    font-size: 14px;
   }
 }
 </style>

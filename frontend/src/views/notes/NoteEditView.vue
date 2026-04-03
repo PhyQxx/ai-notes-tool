@@ -2,10 +2,12 @@
   <div class="note-edit-view">
     <div class="editor-header">
       <div class="header-left">
-        <el-button text @click="handleBack">
-          <el-icon><ArrowLeft /></el-icon>
-          返回
-        </el-button>
+        <el-breadcrumb separator="/" class="note-breadcrumb">
+          <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+          <el-breadcrumb-item v-if="spaceName" :to="{ path: '/spaces/' + currentNote?.spaceId }">{{ spaceName }}</el-breadcrumb-item>
+          <el-breadcrumb-item v-if="folderName" :to="{ path: '/notes', query: { folderId: String(currentNote?.folderId) } }">{{ folderName }}</el-breadcrumb-item>
+          <el-breadcrumb-item>{{ noteTitle || '未命名笔记' }}</el-breadcrumb-item>
+        </el-breadcrumb>
       </div>
 
       <div class="header-center">
@@ -138,6 +140,8 @@ import CommentPanel from '@/components/note/CommentPanel.vue';
 import CollabIndicator from '@/components/editor/CollabIndicator.vue';
 import wsClient, { type WSMessage } from '@/utils/websocket';
 import type { NoteVersion } from '@/types';
+import { getSpaceDetail } from '@/api/space';
+import { getFolderTree } from '@/api/folder';
 
 const route = useRoute();
 const router = useRouter();
@@ -160,6 +164,8 @@ const showVersionPanel = ref(false);
 const showCommentPanel = ref(false);
 const commentCount = ref(0);
 const editorMode = ref<'markdown' | 'richtext'>('markdown');
+const spaceName = ref('');
+const folderName = ref('');
 
 // ===== 自动保存草稿（localStorage）=====
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null;
@@ -381,6 +387,18 @@ onMounted(async () => {
         noteContent.value = currentNote.value.content;
         noteTags.value = currentNote.value.tags || [];
         editorMode.value = (currentNote.value.contentType as 'markdown' | 'richtext') || 'markdown';
+        // Resolve breadcrumb
+        if (currentNote.value.spaceId) {
+          try { const s = await getSpaceDetail(currentNote.value.spaceId); spaceName.value = s.name || ''; } catch(e) {}
+        }
+        if (currentNote.value.folderId) {
+          try {
+            const tree = await getFolderTree();
+            const find = (list: any[], id: number): any => { for (const f of list) { if (f.id === id) return f; if (f.children) { const r = find(f.children, id); if (r) return r; } } return null; };
+            const folder = find(tree, currentNote.value.folderId);
+            if (folder) folderName.value = folder.name;
+          } catch(e) {}
+        }
         lastSavedDraftContent.value = noteContent.value;
       }
     } catch (error) {
