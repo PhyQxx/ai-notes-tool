@@ -83,6 +83,7 @@
         <el-icon><Plus /></el-icon>
         添加标签
       </el-button>
+      <VoiceInput @transcript="handleVoiceTranscript" />
     </div>
 
     <div class="editor-container">
@@ -251,6 +252,7 @@ import ExportMenu from '@/components/editor/ExportMenu.vue';
 import CommentPanel from '@/components/note/CommentPanel.vue';
 import { createShare, listShares, deleteShare } from '@/api/noteShare';
 import CollabIndicator from '@/components/editor/CollabIndicator.vue';
+import VoiceInput from '@/components/voice/VoiceInput.vue';
 import wsClient, { type WSMessage } from '@/utils/websocket';
 import type { NoteVersion } from '@/types';
 import { getSpaceDetail } from '@/api/space';
@@ -424,6 +426,10 @@ const handleSave = async () => {
   } catch (error) {
     console.error('保存失败:', error);
   }
+};
+
+const handleVoiceTranscript = (text: string) => {
+  noteContent.value += text;
 };
 
 const handleAutoSave = () => {

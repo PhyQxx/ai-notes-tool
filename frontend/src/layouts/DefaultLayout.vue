@@ -8,11 +8,11 @@
 
       <el-button type="primary" class="new-note-btn" @click="handleNewNote">
         <el-icon><Plus /></el-icon>
-        <span v-if="!isCollapse">新建笔记</span>
+        <span v-if="!isCollapse">{{ t('nav.newNote') }}</span>
       </el-button>
 
       <div class="folder-section">
-        <div class="section-title">文件夹</div>
+        <div class="section-title">{{ t('nav.folders') }}</div>
         <FolderTree :is-collapse="isCollapse" />
       </div>
 
@@ -23,7 +23,7 @@
           @click="router.push('/notes/recent')"
         >
           <el-icon><Clock /></el-icon>
-          <span v-if="!isCollapse">最近编辑</span>
+          <span v-if="!isCollapse">{{ t('nav.recentEdits') }}</span>
         </div>
         <div
           class="menu-item"
@@ -31,7 +31,7 @@
           @click="router.push('/notes/favorites')"
         >
           <el-icon><Star /></el-icon>
-          <span v-if="!isCollapse">收藏</span>
+          <span v-if="!isCollapse">{{ t('nav.favorites') }}</span>
         </div>
         <div
           class="menu-item"
@@ -39,7 +39,7 @@
           @click="router.push('/spaces')"
         >
           <el-icon><FolderOpened /></el-icon>
-          <span v-if="!isCollapse">团队空间</span>
+          <span v-if="!isCollapse">{{ t('nav.teamSpaces') }}</span>
         </div>
         <div
           class="menu-item"
@@ -47,7 +47,7 @@
           @click="router.push('/ai/chat')"
         >
           <el-icon><ChatDotRound /></el-icon>
-          <span v-if="!isCollapse">AI助手</span>
+          <span v-if="!isCollapse">{{ t('nav.aiAssistant') }}</span>
         </div>
         <div
           class="menu-item"
@@ -55,7 +55,7 @@
           @click="router.push('/trash')"
         >
           <el-icon><Delete /></el-icon>
-          <span v-if="!isCollapse">回收站</span>
+          <span v-if="!isCollapse">{{ t('nav.trash') }}</span>
         </div>
         <div
           class="menu-item"
@@ -63,11 +63,12 @@
           @click="router.push('/graph')"
         >
           <el-icon><Share /></el-icon>
-          <span v-if="!isCollapse">知识图谱</span>
+          <span v-if="!isCollapse">{{ t('nav.knowledgeGraph') }}</span>
         </div>
       </div>
 
       <div class="sidebar-footer">
+        <LanguageSwitch />
         <el-button text @click="toggleCollapse">
           <el-icon>
             <Fold v-if="!isCollapse" />
@@ -149,12 +150,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { ElMessageBox } from 'element-plus';
 import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny, Delete, Share } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { useNotificationStore } from '@/stores/notification';
 import { useThemeStore } from '@/stores/theme';
+import LanguageSwitch from '@/components/LanguageSwitch.vue';
 import { getToken } from '@/utils/storage';
 import wsClient from '@/utils/websocket';
 import { fullTextSearch } from '@/api/note';
@@ -162,6 +165,7 @@ import FolderTree from '@/components/common/FolderTree.vue';
 import NotificationBell from '@/components/common/NotificationBell.vue';
 
 const router = useRouter();
+const { t } = useI18n();
 const authStore = useAuthStore();
 const noteStore = useNoteStore();
 const themeStore = useThemeStore();
