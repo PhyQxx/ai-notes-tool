@@ -47,6 +47,7 @@ const initEditor = () => {
     value: props.modelValue,
     mode: 'wysiwyg',
     cache: { enable: false },
+    cdn: '/vditor',
     upload: {
       accept: 'image/*',
       url: '/api/files/upload/image',
