@@ -1,5 +1,8 @@
 package com.ainotes.dto.request;
 
+import java.util.List;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -34,8 +37,8 @@ public class UpdateNoteRequest {
     private Long folderId;
 
     /**
-     * 标签(逗号分隔)
+     * 标签(数组或逗号分隔字符串，兼容前端)
      */
-    private String tags;
+    private Object tags;
 
 }

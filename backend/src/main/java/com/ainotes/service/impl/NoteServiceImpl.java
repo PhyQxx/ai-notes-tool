@@ -61,7 +61,7 @@ public class NoteServiceImpl implements NoteService {
         // 默认使用markdown
         note.setContentType(StringUtils.hasText(request.getContentType()) ? request.getContentType() : "markdown");
         note.setFolderId(request.getFolderId());
-        note.setTags(request.getTags());
+        note.setTags(convertTagsToString(request.getTags()));
         note.setIsFavorite(0);
         note.setIsTop(0);
         note.setViewCount(0);
@@ -115,7 +115,7 @@ public class NoteServiceImpl implements NoteService {
             note.setFolderId(request.getFolderId());
         }
         if (request.getTags() != null) {
-            note.setTags(request.getTags());
+            note.setTags(convertTagsToString(request.getTags()));
         }
 
         // 更新笔记
@@ -468,6 +468,19 @@ public class NoteServiceImpl implements NoteService {
             default:
                 return 0;
         }
+    }
+
+    /**
+     * 将 tags 转换为逗号分隔字符串（兼容前端数组和字符串）
+     */
+    @SuppressWarnings("unchecked")
+    private String convertTagsToString(Object tags) {
+        if (tags == null) return null;
+        if (tags instanceof String) return (String) tags;
+        if (tags instanceof java.util.List) {
+            return String.join(",", (java.util.List<String>) tags);
+        }
+        return tags.toString();
     }
 
 }

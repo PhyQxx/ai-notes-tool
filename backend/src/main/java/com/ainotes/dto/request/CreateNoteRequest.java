@@ -41,8 +41,8 @@ public class CreateNoteRequest {
     private Long folderId;
 
     /**
-     * 标签(逗号分隔)
+     * 标签(数组或逗号分隔字符串，兼容前端)
      */
-    private String tags;
+    private Object tags;
 
 }
