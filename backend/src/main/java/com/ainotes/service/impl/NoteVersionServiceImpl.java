@@ -10,6 +10,7 @@ import com.ainotes.entity.NoteVersion;
 import com.ainotes.mapper.NoteMapper;
 import com.ainotes.mapper.NoteVersionMapper;
 import com.ainotes.service.NoteVersionService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -71,6 +72,9 @@ public class NoteVersionServiceImpl implements NoteVersionService {
         noteVersionMapper.insert(version);
         log.info("创建笔记版本成功，笔记ID：{}，版本号：{}", noteId, nextVersionNo);
 
+        // 版本保留策略
+        cleanOldVersions(noteId);
+
         return version.getId();
     }
 
@@ -112,6 +116,32 @@ public class NoteVersionServiceImpl implements NoteVersionService {
 
             noteVersionMapper.insert(version);
             log.info("自动保存笔记版本成功，笔记ID：{}，版本号：{}", noteId, nextVersionNo);
+
+            // 版本保留策略：最多保留50个版本，超出清理最老的
+            cleanOldVersions(noteId);
+        }
+    }
+
+    private static final int MAX_VERSIONS_PER_NOTE = 50;
+
+    /**
+     * 清理超出限制的旧版本（保留最新的50个）
+     */
+    private void cleanOldVersions(Long noteId) {
+        LambdaQueryWrapper<NoteVersion> countWrapper = new LambdaQueryWrapper<>();
+        countWrapper.eq(NoteVersion::getNoteId, noteId);
+        Long count = noteVersionMapper.selectCount(countWrapper);
+        if (count != null && count > MAX_VERSIONS_PER_NOTE) {
+            // 查询需要删除的旧版本ID（按版本号升序，取超出的部分）
+            LambdaQueryWrapper<NoteVersion> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(NoteVersion::getNoteId, noteId);
+            queryWrapper.orderByAsc(NoteVersion::getVersionNo);
+            queryWrapper.last("LIMIT " + (count - MAX_VERSIONS_PER_NOTE));
+            List<NoteVersion> oldVersions = noteVersionMapper.selectList(queryWrapper);
+            for (NoteVersion v : oldVersions) {
+                noteVersionMapper.deleteById(v.getId());
+            }
+            log.info("清理旧版本，笔记ID：{}，清理数量：{}", noteId, oldVersions.size());
         }
     }
 

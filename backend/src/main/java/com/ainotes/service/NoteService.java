@@ -85,4 +85,24 @@ public interface NoteService {
      */
     void toggleTop(Long userId, Long noteId);
 
+    /**
+     * 获取回收站列表
+     */
+    IPage<Note> listTrash(Long userId, Integer page, Integer size);
+
+    /**
+     * 从回收站恢复笔记
+     */
+    void restoreNote(Long userId, Long noteId);
+
+    /**
+     * 彻底删除笔记
+     */
+    void permanentDeleteNote(Long userId, Long noteId);
+
+    /**
+     * 清空回收站
+     */
+    void emptyTrash(Long userId);
+
 }

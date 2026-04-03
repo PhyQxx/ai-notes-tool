@@ -157,4 +157,41 @@ public class NoteController {
         return Result.success("操作成功", null);
     }
 
+    // ===== 回收站接口 =====
+
+    @GetMapping("/trash")
+    @Operation(summary = "获取回收站列表")
+    public Result<IPage<Note>> listTrash(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        IPage<Note> result = noteService.listTrash(userId, page, size);
+        return Result.success(result);
+    }
+
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "从回收站恢复笔记")
+    public Result<Void> restoreNote(@PathVariable Long id, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        noteService.restoreNote(userId, id);
+        return Result.success("恢复成功", null);
+    }
+
+    @DeleteMapping("/trash/{id}")
+    @Operation(summary = "彻底删除笔记")
+    public Result<Void> permanentDeleteNote(@PathVariable Long id, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        noteService.permanentDeleteNote(userId, id);
+        return Result.success("彻底删除成功", null);
+    }
+
+    @DeleteMapping("/trash")
+    @Operation(summary = "清空回收站")
+    public Result<Void> emptyTrash(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        noteService.emptyTrash(userId);
+        return Result.success("回收站已清空", null);
+    }
+
 }

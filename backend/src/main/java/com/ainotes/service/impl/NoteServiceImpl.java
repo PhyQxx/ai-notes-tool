@@ -204,10 +204,11 @@ public class NoteServiceImpl implements NoteService {
         // 检查权限
         checkNotePermission(userId, note);
 
-        // 软删除
-        note.setStatus(0);
+        // 移入回收站
+        note.setDeleted(1);
+        note.setDeletedAt(LocalDateTime.now());
         noteMapper.updateById(note);
-        log.info("删除笔记成功，笔记ID：{}", noteId);
+        log.info("笔记移入回收站，笔记ID：{}", noteId);
     }
 
     @Override
@@ -238,6 +239,8 @@ public class NoteServiceImpl implements NoteService {
         // 构建查询条件
         LambdaQueryWrapper<Note> queryWrapper = new LambdaQueryWrapper<>();
         // 注意：不手动添加 eq(Note::getStatus, 1)，@TableLogic 已自动处理逻辑删除
+        // 排除回收站中的笔记
+        queryWrapper.eq(Note::getDeleted, 0);
 
         // 如果指定了空间ID，查询该空间的笔记
         if (query.getSpaceId() != null && query.getSpaceId() > 0) {
@@ -606,6 +609,66 @@ public class NoteServiceImpl implements NoteService {
             return String.join(",", (java.util.List<String>) tags);
         }
         return tags.toString();
+    }
+
+    @Override
+    public IPage<Note> listTrash(Long userId, Integer page, Integer size) {
+        LambdaQueryWrapper<Note> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Note::getDeleted, 1);
+        queryWrapper.eq(Note::getUserId, userId);
+        queryWrapper.orderByDesc(Note::getDeletedAt);
+        Page<Note> pageObj = new Page<>(page, size);
+        return noteMapper.selectPage(pageObj, queryWrapper);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void restoreNote(Long userId, Long noteId) {
+        Note note = noteMapper.selectById(noteId);
+        if (note == null) {
+            throw new BusinessException("笔记不存在");
+        }
+        if (!note.getUserId().equals(userId)) {
+            throw new BusinessException("无权限操作该笔记");
+        }
+        if (note.getDeleted() == null || note.getDeleted() == 0) {
+            throw new BusinessException("该笔记不在回收站中");
+        }
+        note.setDeleted(0);
+        note.setDeletedAt(null);
+        noteMapper.updateById(note);
+        log.info("从回收站恢复笔记，笔记ID：{}", noteId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void permanentDeleteNote(Long userId, Long noteId) {
+        Note note = noteMapper.selectById(noteId);
+        if (note == null) {
+            throw new BusinessException("笔记不存在");
+        }
+        if (!note.getUserId().equals(userId)) {
+            throw new BusinessException("无权限操作该笔记");
+        }
+        if (note.getDeleted() == null || note.getDeleted() == 0) {
+            throw new BusinessException("该笔记不在回收站中");
+        }
+        // 物理删除
+        noteMapper.deleteById(noteId);
+        log.info("彻底删除笔记，笔记ID：{}", noteId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void emptyTrash(Long userId) {
+        LambdaQueryWrapper<Note> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Note::getDeleted, 1);
+        queryWrapper.eq(Note::getUserId, userId);
+        List<Note> trashNotes = noteMapper.selectList(queryWrapper);
+        for (Note note : trashNotes) {
+            noteMapper.deleteById(note.getId());
+        }
+        log.info("清空回收站，用户ID：{}，删除数量：{}", userId, trashNotes.size());
     }
 
 }

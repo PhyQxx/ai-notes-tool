@@ -74,7 +74,7 @@
       <el-button type="primary" size="small" @click="batchTagDialogVisible = true">
         <el-icon><PriceTag /></el-icon> 批量打标签
       </el-button>
-      <el-button type="danger" size="small" @click="handleBatchDelete">批量删除</el-button>
+      <el-button type="danger" size="small" @click="handleBatchDelete">移入回收站</el-button>
       <el-button size="small" @click="selectedNoteIds = []">取消选择</el-button>
     </div>
 
@@ -242,11 +242,11 @@ const handleBatchAddTags = async () => {
 
 const handleBatchDelete = async () => {
   try {
-    await ElMessageBox.confirm(`确定删除选中的 ${selectedNoteIds.value.length} 篇笔记？`, '批量删除', { type: 'warning' });
+    await ElMessageBox.confirm(`确定将选中的 ${selectedNoteIds.value.length} 篇笔记移入回收站？`, '移入回收站', { type: 'warning' });
     for (const id of selectedNoteIds.value) {
       await noteStore.deleteNote(id);
     }
-    ElMessage.success('删除成功');
+    ElMessage.success('已移入回收站');
     selectedNoteIds.value = [];
     fetchInitialNotes();
     loadTagCloud();

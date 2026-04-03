@@ -73,6 +73,11 @@ const routes: RouteRecordRaw[] = [
         path: 'notifications',
         name: 'Notifications',
         component: () => import('@/views/NotificationView.vue')
+      },
+      {
+        path: 'trash',
+        name: 'Trash',
+        component: () => import('@/views/TrashView.vue')
       }
     ]
   },

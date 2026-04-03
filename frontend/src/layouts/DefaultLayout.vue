@@ -49,6 +49,14 @@
           <el-icon><ChatDotRound /></el-icon>
           <span v-if="!isCollapse">AI助手</span>
         </div>
+        <div
+          class="menu-item"
+          :class="{ active: isActiveMenu('/trash') }"
+          @click="router.push('/trash')"
+        >
+          <el-icon><Delete /></el-icon>
+          <span v-if="!isCollapse">回收站</span>
+        </div>
       </div>
 
       <div class="sidebar-footer">
@@ -134,7 +142,7 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessageBox } from 'element-plus';
-import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny } from '@element-plus/icons-vue';
+import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny, Delete } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { useNotificationStore } from '@/stores/notification';

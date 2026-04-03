@@ -81,6 +81,16 @@ public class Note implements Serializable {
     private Integer status;
 
     /**
+     * 回收站标记：0-正常，1-回收站
+     */
+    private Integer deleted;
+
+    /**
+     * 移入回收站时间
+     */
+    private LocalDateTime deletedAt;
+
+    /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)
