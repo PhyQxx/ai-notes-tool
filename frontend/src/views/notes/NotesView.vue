@@ -1,7 +1,10 @@
 <template>
-  <div class="notes-view">
+  <div class="notes-view" ref="scrollContainer" @scroll="handleScroll">
     <div class="toolbar">
       <div class="toolbar-left">
+        <h3 v-if="mode === 'recent'" class="mode-title">最近编辑</h3>
+        <h3 v-else-if="mode === 'favorites'" class="mode-title">收藏笔记</h3>
+
         <el-input
           v-model="searchKeyword"
           placeholder="搜索笔记..."
@@ -36,23 +39,11 @@
           />
         </el-select>
 
-        <el-select v-model="timeFilter" placeholder="时间" style="width: 120px" clearable @change="handleFilter">
-          <el-option label="全部" value="" />
-          <el-option label="今天" value="today" />
-          <el-option label="本周" value="week" />
-          <el-option label="本月" value="month" />
-        </el-select>
-
         <el-select v-model="sortBy" placeholder="排序" style="width: 120px" @change="handleSort">
           <el-option label="更新时间" value="updatedAt" />
           <el-option label="创建时间" value="createdAt" />
           <el-option label="标题" value="title" />
         </el-select>
-
-        <el-button v-if="recentSearches.length > 0" text @click="showRecentSearches = true">
-          <el-icon><Clock /></el-icon>
-          最近搜索
-        </el-button>
       </div>
 
       <div class="toolbar-right">
@@ -63,36 +54,11 @@
       </div>
     </div>
 
-    <!-- 最近搜索建议 -->
-    <el-drawer
-      v-model="showRecentSearches"
-      title="最近搜索"
-      size="300px"
-      direction="ltr"
-    >
-      <div v-if="recentSearches.length === 0" class="empty-search">
-        <el-empty description="暂无搜索历史" />
-      </div>
-      <div v-else class="recent-searches">
-        <el-tag
-          v-for="(keyword, index) in recentSearches"
-          :key="index"
-          closable
-          style="margin: 4px"
-          @click="handleQuickSearch(keyword)"
-          @close="handleRemoveRecentSearch(index)"
-        >
-          <el-icon><Clock /></el-icon>
-          {{ keyword }}
-        </el-tag>
-      </div>
-    </el-drawer>
-
-    <div v-if="loading" class="loading-container">
+    <div v-if="initialLoading" class="loading-container">
       <el-icon class="is-loading" :size="32"><Loading /></el-icon>
     </div>
 
-    <el-empty v-else-if="notes.length === 0" description="暂无笔记" />
+    <el-empty v-else-if="displayNotes.length === 0" description="暂无笔记" />
 
     <div v-else class="notes-list">
       <el-card
@@ -106,27 +72,26 @@
       </el-card>
     </div>
 
-    <div v-if="total > 0" class="pagination-container">
-      <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
+    <div v-if="loadingMore" class="load-more">
+      <el-icon class="is-loading" :size="20" /><span>加载中...</span>
+    </div>
+    <div v-else-if="!hasMore && displayNotes.length > 0" class="load-more no-more">
+      没有更多了
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoteStore } from '@/stores/note';
 import NoteCard from '@/components/common/NoteCard.vue';
 import { fullTextSearch } from '@/api/note';
 import type { Folder } from '@/types';
+
+const props = defineProps<{
+  mode?: string;
+}>();
 
 const router = useRouter();
 const noteStore = useNoteStore();
@@ -136,28 +101,14 @@ const searchScope = ref('all');
 const searchResults = ref<any[]>([]);
 const sortBy = ref('updatedAt');
 const folderFilter = ref(0);
-const timeFilter = ref('');
-const showRecentSearches = ref(false);
-
-// 从localStorage加载最近搜索
-const recentSearches = ref<string[]>(JSON.parse(localStorage.getItem('recent-searches') || '[]'));
+const scrollContainer = ref<HTMLElement | null>(null);
+const initialLoading = ref(false);
+const loadingMore = ref(false);
+const hasMore = ref(true);
 
 const notes = computed(() => noteStore.notes);
-const loading = computed(() => noteStore.loading);
 const total = computed(() => noteStore.total);
 const folders = computed(() => noteStore.folders);
-const currentPage = computed({
-  get: () => noteStore.currentPage,
-  set: (value) => {
-    noteStore.currentPage = value;
-  }
-});
-const pageSize = computed({
-  get: () => noteStore.pageSize,
-  set: (value) => {
-    noteStore.pageSize = value;
-  }
-});
 
 const isSearchMode = computed(() => searchKeyword.value.trim().length > 0);
 
@@ -172,14 +123,10 @@ const displayNotes = computed(() => {
   return notes.value;
 });
 
-// 扁平化文件夹列表
 const flatFolders = computed<Folder[]>(() => {
   const result: Folder[] = [];
   const flatten = (folder: Folder, level = 0) => {
-    result.push({
-      ...folder,
-      name: '　'.repeat(level) + folder.name
-    });
+    result.push({ ...folder, name: '\u3000'.repeat(level) + folder.name });
     if (folder.children) {
       folder.children.forEach(child => flatten(child, level + 1));
     }
@@ -188,17 +135,58 @@ const flatFolders = computed<Folder[]>(() => {
   return result;
 });
 
-// 高亮搜索关键词
-const highlightKeyword = (text: string, keyword: string) => {
-  if (!keyword.trim()) return text;
-  const regex = new RegExp(`(${keyword})`, 'gi');
-  return text.replace(regex, '<span style="background-color: var(--el-color-warning-light-7); padding: 0 2px; border-radius: 2px;">$1</span>');
+const getQueryParams = () => {
+  const params: any = {};
+  if (props.mode === 'recent') {
+    params.sortBy = 'updatedAt';
+  } else if (props.mode === 'favorites') {
+    params.isFavorite = 1;
+  } else if (folderFilter.value !== 0) {
+    params.folderId = folderFilter.value;
+  }
+  if (sortBy.value) params.sortBy = sortBy.value;
+  return params;
+};
+
+const fetchInitialNotes = async () => {
+  initialLoading.value = true;
+  hasMore.value = true;
+  noteStore.currentPage = 1;
+  try {
+    await noteStore.fetchNotes({ page: 1, size: noteStore.pageSize, ...getQueryParams() });
+    hasMore.value = notes.value.length < total.value;
+  } catch (e) {
+    console.error(e);
+  } finally {
+    initialLoading.value = false;
+  }
+};
+
+const loadMore = async () => {
+  if (loadingMore.value || !hasMore.value || isSearchMode.value) return;
+  loadingMore.value = true;
+  const nextPage = noteStore.currentPage + 1;
+  try {
+    await noteStore.fetchNotes({ page: nextPage, size: noteStore.pageSize, append: true, ...getQueryParams() });
+    hasMore.value = notes.value.length < total.value;
+  } catch (e) {
+    console.error(e);
+  } finally {
+    loadingMore.value = false;
+  }
+};
+
+const handleScroll = () => {
+  const el = scrollContainer.value;
+  if (!el) return;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 50) {
+    loadMore();
+  }
 };
 
 const handleSearch = async () => {
   const keyword = searchKeyword.value.trim();
   if (keyword) {
-    saveRecentSearch(keyword);
     try {
       const result = await fullTextSearch(keyword, searchScope.value);
       searchResults.value = result.records || [];
@@ -208,89 +196,22 @@ const handleSearch = async () => {
     }
   } else {
     searchResults.value = [];
-    handleFilter();
+    fetchInitialNotes();
   }
 };
 
 const handleClearSearch = () => {
   searchKeyword.value = '';
   searchResults.value = [];
-  handleFilter();
+  fetchInitialNotes();
 };
 
 const handleFilter = () => {
-  let filteredNotes = [...notes.value];
-
-  // 文件夹筛选
-  if (folderFilter.value !== 0) {
-    filteredNotes = filteredNotes.filter(note => note.folderId === folderFilter.value);
-  }
-
-  // 时间筛选
-  if (timeFilter.value) {
-    const now = new Date();
-    filteredNotes = filteredNotes.filter(note => {
-      const noteDate = new Date(note.updatedAt);
-      switch (timeFilter.value) {
-        case 'today':
-          return noteDate.toDateString() === now.toDateString();
-        case 'week':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          return noteDate >= weekAgo;
-        case 'month':
-          const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
-          return noteDate >= monthAgo;
-        default:
-          return true;
-      }
-    });
-  }
-
-  // 关键词高亮
-  if (searchKeyword.value.trim()) {
-    filteredNotes = filteredNotes.map(note => ({
-      ...note,
-      title: highlightKeyword(note.title, searchKeyword.value)
-    }));
-  }
-
-  // 排序
-  handleSort();
-
-  noteStore.notes = filteredNotes;
+  fetchInitialNotes();
 };
 
 const handleSort = () => {
-  notes.value.sort((a: any, b: any) => {
-    if (sortBy.value === 'title') {
-      return a.title.replace(/<[^>]*>/g, '').localeCompare(b.title.replace(/<[^>]*>/g, ''));
-    }
-    return new Date(b[sortBy.value]).getTime() - new Date(a[sortBy.value]).getTime();
-  });
-};
-
-const handleQuickSearch = (keyword: string) => {
-  searchKeyword.value = keyword;
-  showRecentSearches.value = false;
-  handleSearch();
-};
-
-const saveRecentSearch = (keyword: string) => {
-  const index = recentSearches.value.indexOf(keyword);
-  if (index !== -1) {
-    recentSearches.value.splice(index, 1);
-  }
-  recentSearches.value.unshift(keyword);
-  // 最多保存10条
-  if (recentSearches.value.length > 10) {
-    recentSearches.value.pop();
-  }
-  localStorage.setItem('recent-searches', JSON.stringify(recentSearches.value));
-};
-
-const handleRemoveRecentSearch = (index: number) => {
-  recentSearches.value.splice(index, 1);
-  localStorage.setItem('recent-searches', JSON.stringify(recentSearches.value));
+  fetchInitialNotes();
 };
 
 const handleNewNote = () => {
@@ -309,31 +230,45 @@ const handleToggleFavorite = async (id: number) => {
   }
 };
 
-const handleSizeChange = (size: number) => {
-  noteStore.fetchNotes({ size });
-};
-
-const handleCurrentChange = (page: number) => {
-  noteStore.fetchNotes({ page });
-};
+watch(() => props.mode, () => {
+  searchResults.value = [];
+  searchKeyword.value = '';
+  folderFilter.value = 0;
+  fetchInitialNotes();
+});
 
 onMounted(async () => {
   await noteStore.fetchFolders();
-  noteStore.fetchNotes();
+  fetchInitialNotes();
 });
 </script>
 
 <style scoped lang="scss">
 .notes-view {
+  height: 100%;
+  overflow-y: auto;
+
   .toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
 
     .toolbar-left {
       display: flex;
       gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+
+      .mode-title {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+        margin-right: 8px;
+      }
     }
   }
 
@@ -360,28 +295,17 @@ onMounted(async () => {
     }
   }
 
-  .pagination-container {
-    margin-top: 32px;
+  .load-more {
     display: flex;
+    align-items: center;
     justify-content: center;
-  }
-
-  .empty-search {
-    padding: 40px 0;
-  }
-
-  .recent-searches {
-    display: flex;
-    flex-wrap: wrap;
     gap: 8px;
+    padding: 24px 0;
+    color: var(--el-text-color-secondary);
+    font-size: 14px;
 
-    .el-tag {
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        transform: translateY(-2px);
-      }
+    &.no-more {
+      color: var(--el-text-color-placeholder);
     }
   }
 }
