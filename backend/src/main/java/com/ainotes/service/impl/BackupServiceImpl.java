@@ -6,7 +6,6 @@ import com.ainotes.service.BackupService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +19,6 @@ import java.util.*;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class BackupServiceImpl implements BackupService {
 
     private final NoteMapper noteMapper;
