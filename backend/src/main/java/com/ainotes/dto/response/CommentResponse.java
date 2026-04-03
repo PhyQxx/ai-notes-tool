@@ -55,6 +55,21 @@ public class CommentResponse {
     private String content;
 
     /**
+     * @提及的用户ID列表
+     */
+    private String mentionUserIds;
+
+    /**
+     * 评论状态：open/resolved
+     */
+    private String resolveStatus;
+
+    /**
+     * 被评论的文字
+     */
+    private String positionText;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdAt;

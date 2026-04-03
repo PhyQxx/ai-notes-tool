@@ -63,12 +63,23 @@
               <span class="comment-time">{{ formatTime(comment.createdAt) }}</span>
             </div>
 
-            <div class="comment-text">{{ comment.content }}</div>
+            <div class="comment-text">
+              <div v-if="comment.positionText" class="position-text">> {{ comment.positionText }}</div>
+              {{ comment.content }}
+            </div>
 
             <div class="comment-actions">
               <el-button text size="small" @click="handleReply(comment)">
                 <el-icon><ChatLineRound /></el-icon>
                 回复
+              </el-button>
+              <el-button
+                text
+                size="small"
+                :type="comment.resolveStatus === 'resolved' ? 'success' : 'warning'"
+                @click="handleToggleStatus(comment)"
+              >
+                {{ comment.resolveStatus === 'resolved' ? '✓ 已解决' : '○ 未解决' }}
               </el-button>
               <el-button
                 v-if="comment.userId === currentUserId"
@@ -161,7 +172,7 @@ import {
   ChatLineRound,
   Delete
 } from '@element-plus/icons-vue';
-import { listComments, createComment, deleteComment as deleteCommentApi } from '@/api/comment';
+import { listComments, createComment, deleteComment as deleteCommentApi, toggleCommentStatus } from '@/api/comment';
 import { useAuthStore } from '@/stores/auth';
 import type { Comment } from '@/types';
 
@@ -226,6 +237,11 @@ const formatTime = (time: string) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
 
+const extractMentions = (text: string): string => {
+  const matches = text.match(/@(\S+)/g);
+  return matches ? matches.map(m => m.substring(1)).join(',') : '';
+};
+
 const loadComments = async () => {
   loading.value = true;
   try {
@@ -248,7 +264,8 @@ const handleAddComment = async () => {
     submitting.value = true;
     const comment = await createComment({
       noteId: props.noteId,
-      content: newComment.value.trim()
+      content: newComment.value.trim(),
+      mentionUserIds: extractMentions(newComment.value) || undefined
     });
 
     // 添加到评论列表
@@ -281,7 +298,8 @@ const handleSubmitReply = async () => {
     const reply = await createComment({
       noteId: props.noteId,
       parentId: replyTo.value.id,
-      content: replyContent.value.trim()
+      content: replyContent.value.trim(),
+      mentionUserIds: extractMentions(replyContent.value) || undefined
     });
 
     // 找到父评论并添加回复
@@ -300,6 +318,16 @@ const handleSubmitReply = async () => {
     ElMessage.error(error.message || '回复失败');
   } finally {
     submitting.value = false;
+  }
+};
+
+const handleToggleStatus = async (comment: any) => {
+  const newStatus = comment.resolveStatus === 'resolved' ? 'open' : 'resolved';
+  try {
+    await toggleCommentStatus(comment.id, newStatus);
+    comment.resolveStatus = newStatus;
+  } catch (e: any) {
+    ElMessage.error(e.message || '操作失败');
   }
 };
 
@@ -432,6 +460,16 @@ watch(() => props.noteId, () => {
             line-height: 1.6;
             margin-bottom: 8px;
             word-break: break-word;
+
+            .position-text {
+              font-size: 12px;
+              color: var(--el-text-color-secondary);
+              background: var(--el-fill-color);
+              padding: 4px 8px;
+              border-radius: 4px;
+              margin-bottom: 4px;
+              font-style: italic;
+            }
           }
 
           .comment-actions {

@@ -48,6 +48,10 @@
           反向链接 ({{ backlinks.length }})
         </el-button>
         <ExportMenu :note-id="noteId" :note-title="noteTitle" />
+        <el-button @click="openShareDialog">
+          <el-icon><Share /></el-icon>
+          分享
+        </el-button>
         <el-button type="primary" @click="showAIAssistant = true">
           <el-icon><ChatDotRound /></el-icon>
           AI助手
@@ -183,6 +187,54 @@
       </div>
     </div>
   </div>
+
+    <!-- 分享弹窗 -->
+    <el-dialog v-model="showShareDialog" title="分享笔记" width="500px">
+      <div class="share-section">
+        <el-form label-width="80px">
+          <el-form-item label="链接Slug">
+            <el-input v-model="shareSlug" placeholder="自定义链接后缀，留空自动生成" />
+          </el-form-item>
+          <el-form-item label="密码保护">
+            <el-switch v-model="sharePasswordEnabled" />
+            <el-input
+              v-if="sharePasswordEnabled"
+              v-model="sharePassword"
+              placeholder="设置访问密码"
+              style="margin-top: 8px"
+              show-password
+            />
+          </el-form-item>
+          <el-form-item label="有效期">
+            <el-date-picker
+              v-model="shareExpireAt"
+              type="datetime"
+              placeholder="留空为永久有效"
+              :disabled-date="(t: Date) => t < new Date()"
+            />
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" :loading="shareCreating" @click="handleCreateShare" style="width: 100%">
+          创建分享链接
+        </el-button>
+      </div>
+      <div v-if="shareList.length > 0" class="share-list">
+        <div class="share-list-title">已创建的分享</div>
+        <div v-for="s in shareList" :key="s.id" class="share-item">
+          <div class="share-info">
+            <el-link type="primary" :underline="false" @click="copyShareLink(s.slug)">
+              {{ shareBaseUrl }}/{{ s.slug }}
+            </el-link>
+            <span class="share-meta">浏览 {{ s.viewCount }} 次</span>
+            <el-tag v-if="s.password" size="small" type="warning">密码保护</el-tag>
+            <el-tag v-if="s.expireAt" size="small" type="info">{{ new Date(s.expireAt).toLocaleString() }} 过期</el-tag>
+          </div>
+          <el-button text type="danger" size="small" @click="handleDeleteShare(s.id)">
+            <el-icon><Delete /></el-icon>
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -197,6 +249,7 @@ import AIAssistant from '@/components/ai/AIAssistant.vue';
 import VersionPanel from '@/components/editor/VersionPanel.vue';
 import ExportMenu from '@/components/editor/ExportMenu.vue';
 import CommentPanel from '@/components/note/CommentPanel.vue';
+import { createShare, listShares, deleteShare } from '@/api/noteShare';
 import CollabIndicator from '@/components/editor/CollabIndicator.vue';
 import wsClient, { type WSMessage } from '@/utils/websocket';
 import type { NoteVersion } from '@/types';
@@ -225,6 +278,16 @@ const showVersionPanel = ref(false);
 const showCommentPanel = ref(false);
 const showBacklinksPanel = ref(false);
 const backlinks = ref<NoteLink[]>([]);
+
+// 分享
+const showShareDialog = ref(false);
+const shareSlug = ref('');
+const sharePasswordEnabled = ref(false);
+const sharePassword = ref('');
+const shareExpireAt = ref('');
+const shareCreating = ref(false);
+const shareList = ref<any[]>([]);
+const shareBaseUrl = `${window.location.origin}/share`;
 
 // [[ 笔记选择器
 const showLinkSelector = ref(false);
@@ -426,6 +489,51 @@ const handleVersionRestore = (version: NoteVersion) => {
 };
 
 // 反向链接
+const openShareDialog = async () => {
+  showShareDialog.value = true;
+  shareSlug.value = '';
+  sharePassword.value = '';
+  sharePasswordEnabled.value = false;
+  shareExpireAt.value = '';
+  try {
+    shareList.value = await listShares(noteId.value);
+  } catch (e) { shareList.value = []; }
+};
+
+const handleCreateShare = async () => {
+  shareCreating.value = true;
+  try {
+    const s = await createShare(noteId.value, {
+      slug: shareSlug.value || undefined,
+      password: sharePasswordEnabled.value ? sharePassword.value : undefined,
+      expireAt: shareExpireAt.value || undefined
+    });
+    shareList.value.unshift(s);
+    ElMessage.success('分享链接已创建');
+    copyShareLink(s.slug);
+  } catch (e: any) {
+    ElMessage.error(e.message || '创建失败');
+  } finally {
+    shareCreating.value = false;
+  }
+};
+
+const copyShareLink = (slug: string) => {
+  navigator.clipboard.writeText(`${shareBaseUrl}/${slug}`);
+  ElMessage.success('链接已复制');
+};
+
+const handleDeleteShare = async (shareId: number) => {
+  try {
+    await ElMessageBox.confirm('确定取消此分享？', '取消分享', { type: 'warning' });
+    await deleteShare(noteId.value, shareId);
+    shareList.value = shareList.value.filter(s => s.id !== shareId);
+    ElMessage.success('已取消分享');
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error(e.message || '操作失败');
+  }
+};
+
 const openBacklinks = async () => {
   if (!noteId.value) return;
   try {

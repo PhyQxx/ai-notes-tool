@@ -81,6 +81,9 @@ public class CommentServiceImpl implements CommentService {
         comment.setUserId(userId);
         comment.setParentId(request.getParentId() != null ? request.getParentId() : 0L);
         comment.setContent(request.getContent());
+        comment.setMentionUserIds(request.getMentionUserIds());
+        comment.setPositionText(request.getPositionText());
+        comment.setResolveStatus("open");
         comment.setStatus(1);
         commentMapper.insert(comment);
 
@@ -142,6 +145,9 @@ public class CommentServiceImpl implements CommentService {
                     response.setUserId(comment.getUserId());
                     response.setParentId(comment.getParentId());
                     response.setContent(comment.getContent());
+                    response.setMentionUserIds(comment.getMentionUserIds());
+                    response.setResolveStatus(comment.getResolveStatus());
+                    response.setPositionText(comment.getPositionText());
                     response.setCreatedAt(comment.getCreatedAt());
 
                     response.setUsername(usernameMap.get(comment.getUserId()));
@@ -213,6 +219,20 @@ public class CommentServiceImpl implements CommentService {
         commentMapper.updateById(comment);
 
         log.info("删除评论成功，评论ID：{}，操作者：{}", commentId, userId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void toggleStatus(Long userId, Long commentId, String status) {
+        if (!"open".equals(status) && !"resolved".equals(status)) {
+            throw new BusinessException("无效状态");
+        }
+        Comment comment = commentMapper.selectById(commentId);
+        if (comment == null || comment.getStatus() == 0) {
+            throw new BusinessException("评论不存在");
+        }
+        comment.setResolveStatus(status);
+        commentMapper.updateById(comment);
     }
 
     /**

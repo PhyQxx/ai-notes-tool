@@ -44,6 +44,8 @@ public class SecurityConfig {
                         .requestMatchers("/static/**", "/uploads/**").permitAll()
                         // 放行WebSocket
                         .requestMatchers("/ws/**").permitAll()
+                        // 放行公开分享
+                        .requestMatchers("/share/**").permitAll()
                         // 放行CORS预检
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // 其他请求需要认证

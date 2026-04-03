@@ -77,6 +77,11 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/share/:slug',
+    name: 'SharedNote',
+    component: () => import('@/views/SharedNoteView.vue')
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/'
   }

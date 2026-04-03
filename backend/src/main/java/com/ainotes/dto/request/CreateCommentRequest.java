@@ -28,4 +28,14 @@ public class CreateCommentRequest {
     @NotBlank(message = "评论内容不能为空")
     private String content;
 
+    /**
+     * @提及的用户ID列表
+     */
+    private String mentionUserIds;
+
+    /**
+     * 被评论的文字
+     */
+    private String positionText;
+
 }

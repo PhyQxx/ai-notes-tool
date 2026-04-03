@@ -45,6 +45,21 @@ public class Comment implements Serializable {
     private String content;
 
     /**
+     * @提及的用户ID列表
+     */
+    private String mentionUserIds;
+
+    /**
+     * 评论状态：open/resolved
+     */
+    private String resolveStatus;
+
+    /**
+     * 被评论的文字
+     */
+    private String positionText;
+
+    /**
      * 状态：1-正常，0-删除
      */
     private Integer status;

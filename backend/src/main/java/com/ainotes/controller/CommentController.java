@@ -63,6 +63,17 @@ public class CommentController {
     }
 
     /**
+     * 切换评论状态（open/resolved）
+     */
+    @PutMapping("/comments/{id}/status")
+    @Operation(summary = "切换评论状态")
+    public Result<Void> toggleStatus(@PathVariable Long id, @RequestParam String status, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        commentService.toggleStatus(userId, id, status);
+        return Result.success("状态更新成功", null);
+    }
+
+    /**
      * 删除评论
      *
      * @param id 评论ID

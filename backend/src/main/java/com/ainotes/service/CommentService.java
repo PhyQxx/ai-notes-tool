@@ -39,4 +39,6 @@ public interface CommentService {
      */
     void deleteComment(Long userId, Long commentId);
 
+    void toggleStatus(Long userId, Long commentId, String status);
+
 }
