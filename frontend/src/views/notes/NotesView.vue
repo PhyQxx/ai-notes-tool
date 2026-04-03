@@ -131,10 +131,7 @@ const timeFilter = ref('');
 const showRecentSearches = ref(false);
 
 // 从localStorage加载最近搜索
-const recentSearches = ref<string[]>(() => {
-  const saved = localStorage.getItem('recent-searches');
-  return saved ? JSON.parse(saved) : [];
-});
+const recentSearches = ref<string[]>(JSON.parse(localStorage.getItem('recent-searches') || '[]'));
 
 const notes = computed(() => noteStore.notes);
 const loading = computed(() => noteStore.loading);

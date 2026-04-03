@@ -105,7 +105,7 @@
 
     <!-- 版本历史面板 -->
     <VersionPanel
-      v-model:visible="showVersionPanel"
+      v-model="showVersionPanel"
       :note-id="noteId"
       @restore="handleVersionRestore"
     />

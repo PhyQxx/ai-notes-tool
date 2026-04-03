@@ -90,7 +90,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Close, Promotion, Document, Magic, DocumentCopy, RefreshRight } from '@element-plus/icons-vue';
+import { Close, Promotion, Document, MagicStick, DocumentCopy, RefreshRight } from '@element-plus/icons-vue';
 import { useAIStore } from '@/stores/ai';
 import { useNoteStore } from '@/stores/note';
 import AIProviderSelect from './AIProviderSelect.vue';
@@ -120,7 +120,7 @@ const chatContainer = ref<HTMLElement>();
 
 const quickActions = ref([
   { type: 'summarize', label: '📝 摘要', icon: Document, loading: false },
-  { type: 'optimize', label: '✨ 优化', icon: Magic, loading: false },
+  { type: 'optimize', label: '✨ 优化', icon: MagicStick, loading: false },
   { type: 'expand', label: '📖 续写', icon: DocumentCopy, loading: false },
   { type: 'rewrite', label: '🔄 改写', icon: RefreshRight, loading: false }
 ]);

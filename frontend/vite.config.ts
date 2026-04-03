@@ -39,14 +39,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: isProduction ? false : true,
-      minify: isProduction ? 'terser' : false,
-      // terser 压缩配置
-      terserOptions: {
-        compress: {
-          drop_console: isProduction,
-          drop_debugger: isProduction,
-        },
-      },
+      minify: isProduction ? 'esbuild' : false,
       // chunk 大小警告限制（KB）
       chunkSizeWarningLimit: 1500,
       rollupOptions: {

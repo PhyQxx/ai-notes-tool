@@ -95,7 +95,7 @@
       <el-button-group>
         <el-tooltip content="左对齐" placement="top">
           <el-button
-            :type="isActive({ textAlign: 'left' }) ? 'primary' : ''"
+            :type="isActive('textAlign', 'left') ? 'primary' : ''"
             @click="editor?.chain().focus().setTextAlign('left').run()"
           >
             <el-icon><DArrowLeft /></el-icon>
@@ -103,7 +103,7 @@
         </el-tooltip>
         <el-tooltip content="居中" placement="top">
           <el-button
-            :type="isActive({ textAlign: 'center' }) ? 'primary' : ''"
+            :type="isActive('textAlign', 'center') ? 'primary' : ''"
             @click="editor?.chain().focus().setTextAlign('center').run()"
           >
             <el-icon><Minus /></el-icon>
@@ -111,7 +111,7 @@
         </el-tooltip>
         <el-tooltip content="右对齐" placement="top">
           <el-button
-            :type="isActive({ textAlign: 'right' }) ? 'primary' : ''"
+            :type="isActive('textAlign', 'right') ? 'primary' : ''"
             @click="editor?.chain().focus().setTextAlign('right').run()"
           >
             <el-icon><DArrowRight /></el-icon>
