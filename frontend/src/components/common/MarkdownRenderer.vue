@@ -6,6 +6,7 @@
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import Vditor from 'vditor';
 import 'vditor/dist/index.css';
+import { useThemeStore } from '@/stores/theme';
 
 const props = defineProps<{
   content: string;
@@ -13,6 +14,7 @@ const props = defineProps<{
 
 const previewRef = ref<HTMLElement>();
 let vditorPreview: Vditor | null = null;
+const themeStore = useThemeStore();
 
 const renderContent = () => {
   if (!previewRef.value || !props.content) {

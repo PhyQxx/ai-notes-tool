@@ -448,6 +448,11 @@ onBeforeUnmount(() => {
     .header-left {
       display: flex;
       align-items: center;
+      min-width: 200px;
+
+      .note-breadcrumb {
+        font-size: 14px;
+      }
     }
 
     .header-center {

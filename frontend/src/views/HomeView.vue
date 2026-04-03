@@ -76,7 +76,7 @@
         @action="router.push('/notes/new')"
       />
 
-      <div v-else class="recent-notes-list">
+      <div v-else class="recent-notes-list" ref="homeScrollContainer" @scroll="handleHomeScroll">
         <el-card
           v-for="note in recentNotes"
           :key="note.id"
@@ -99,6 +99,12 @@
             </div>
           </div>
         </el-card>
+        <div v-if="homeLoadingMore" class="load-more">
+          <el-icon class="is-loading" :size="20" /><span>加载中...</span>
+        </div>
+        <div v-else-if="!homeHasMore && recentNotes.length > 0" class="load-more no-more">
+          没有更多了
+        </div>
       </div>
     </div>
   </div>
@@ -128,13 +134,16 @@ const loading = ref(false);
 const error = ref(false);
 const errorType = ref<'network' | 'permission' | 'data'>('network');
 const errorMsg = ref('');
+const homeScrollContainer = ref<HTMLElement | null>(null);
+const homeLoadingMore = ref(false);
+const homeHasMore = ref(true);
 
-const totalNotes = computed(() => noteStore.notes.length);
+const totalNotes = computed(() => noteStore.total);
 const favoriteCount = computed(() => noteStore.notes.filter(n => n.isFavorite).length);
 const folderCount = computed(() => noteStore.folders.length);
 
 const recentNotes = computed(() => {
-  return noteStore.notes.slice(0, 6);
+  return noteStore.notes;
 });
 
 const formatDate = (date: string) => {
@@ -144,13 +153,27 @@ const formatDate = (date: string) => {
 onMounted(async () => {
   loading.value = true;
   try {
-    await noteStore.fetchNotes({ page: 1, size: 10 });
+    await noteStore.fetchNotes({ page: 1, size: 20, sortBy: 'updatedAt' });
+    homeHasMore.value = noteStore.notes.length < noteStore.total;
   } catch (error) {
     console.error('加载笔记失败:', error);
   } finally {
     loading.value = false;
   }
 });
+
+const handleHomeScroll = () => {
+  const el = homeScrollContainer.value;
+  if (!el) return;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 50 && !homeLoadingMore.value && homeHasMore.value) {
+    homeLoadingMore.value = true;
+    const nextPage = noteStore.currentPage + 1;
+    noteStore.fetchNotes({ page: nextPage, size: 20, sortBy: 'updatedAt', append: true })
+      .then(() => { homeHasMore.value = noteStore.notes.length < noteStore.total; })
+      .catch(() => {})
+      .finally(() => { homeLoadingMore.value = false; });
+  }
+};
 </script>
 
 <style scoped lang="scss">

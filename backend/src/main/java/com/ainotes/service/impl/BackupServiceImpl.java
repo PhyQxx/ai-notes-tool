@@ -84,16 +84,16 @@ public class BackupServiceImpl implements BackupService {
 
         int totalImported = 0;
 
-        totalImported += importList(data, "folders", folderMapper);
-        totalImported += importList(data, "spaces", spaceMapper);
-        totalImported += importList(data, "spaceMembers", spaceMemberMapper);
-        totalImported += importList(data, "notes", noteMapper);
-        totalImported += importList(data, "comments", commentMapper);
-        totalImported += importList(data, "attachments", attachmentMapper);
-        totalImported += importList(data, "noteVersions", noteVersionMapper);
-        totalImported += importList(data, "aiConversations", aiConversationMapper);
-        totalImported += importList(data, "aiChatMessages", aiChatMessageMapper);
-        totalImported += importList(data, "notifications", notificationMapper);
+        totalImported += importList(data, "folders", folderMapper, Folder.class);
+        totalImported += importList(data, "spaces", spaceMapper, Space.class);
+        totalImported += importList(data, "spaceMembers", spaceMemberMapper, SpaceMember.class);
+        totalImported += importList(data, "notes", noteMapper, Note.class);
+        totalImported += importList(data, "comments", commentMapper, Comment.class);
+        totalImported += importList(data, "attachments", attachmentMapper, Attachment.class);
+        totalImported += importList(data, "noteVersions", noteVersionMapper, NoteVersion.class);
+        totalImported += importList(data, "aiConversations", aiConversationMapper, AIConversation.class);
+        totalImported += importList(data, "aiChatMessages", aiChatMessageMapper, AIChatMessage.class);
+        totalImported += importList(data, "notifications", notificationMapper, Notification.class);
 
         Map<String, Object> result = new HashMap<>();
         result.put("version", version);
@@ -102,12 +102,12 @@ public class BackupServiceImpl implements BackupService {
     }
 
     @SuppressWarnings("unchecked")
-    private int importList(Map<String, Object> data, String key, com.baomidou.mybatisplus.core.mapper.BaseMapper<?> mapper) throws IOException {
+    private int importList(Map<String, Object> data, String key, com.baomidou.mybatisplus.core.mapper.BaseMapper mapper, Class<?> entityClass) throws IOException {
         List<Object> items = (List<Object>) data.get(key);
         if (items == null || items.isEmpty()) return 0;
         for (Object item : items) {
             String json = objectMapper.writeValueAsString(item);
-            Object entity = objectMapper.readValue(json, mapper.getEntityClass());
+            Object entity = objectMapper.readValue(json, entityClass);
             try {
                 mapper.insert(entity);
             } catch (Exception e) {

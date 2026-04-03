@@ -7,6 +7,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import { ElMessage } from 'element-plus';
+import { useThemeStore } from '@/stores/theme';
 
 const props = defineProps<{
   modelValue: string;
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 
 const editorRef = ref<HTMLElement>();
 let vditor: Vditor | null = null;
+const themeStore = useThemeStore();
 
 const uploadImage = async (file: File): Promise<string> => {
   const token = localStorage.getItem('token');
@@ -71,7 +73,7 @@ const initEditor = () => {
         ElMessage.error('图片上传失败');
       }
     },
-    theme: 'classic',
+    theme: themeStore.getEffectiveTheme() === 'dark' ? 'dark' : 'classic',
     toolbar: [
       'headings', 'bold', 'italic', 'strike', '|',
       'line', 'quote', 'list', 'ordered-list', 'check', '|',
@@ -91,11 +93,14 @@ const initEditor = () => {
         footnotes: true,
       },
       highlight: {
-        style: 'github',
+        style: themeStore.getEffectiveTheme() === 'dark' ? 'github-dark' : 'github',
         lineNumber: true,
       },
+      theme: {
+        current: themeStore.getEffectiveTheme() === 'dark' ? 'dark' : 'light',
+      },
       mermaid: {
-        theme: 'default',
+        theme: themeStore.getEffectiveTheme() === 'dark' ? 'dark' : 'default',
       },
     },
     after: () => {
@@ -142,6 +147,13 @@ watch(() => props.modelValue, (newVal) => {
   if (vditor && vditor.getValue() !== newVal) {
     vditor.setValue(newVal);
   }
+});
+
+// 监听主题变化，更新 Vditor 主题
+watch(() => themeStore.mode, () => {
+  if (!vditor) return;
+  const isDark = themeStore.getEffectiveTheme() === 'dark';
+  vditor.setTheme(isDark ? 'dark' : 'classic', isDark ? 'dark' : 'light', isDark ? 'github-dark' : 'github');
 });
 </script>
 
