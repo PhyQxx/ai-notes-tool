@@ -74,6 +74,16 @@ public interface AIService {
     void deleteConversation(Long userId, Long conversationId);
 
     /**
+     * 重命名对话
+     */
+    void renameConversation(Long userId, Long conversationId, String title);
+
+    /**
+     * 新建对话
+     */
+    AIConversation createConversation(Long userId, Long noteId, String provider, String model);
+
+    /**
      * 获取用户AI配置
      *
      * @param userId 用户ID

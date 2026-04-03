@@ -47,6 +47,11 @@ public class AIConversation implements Serializable {
     private String aiModel;
 
     /**
+     * 对话标题
+     */
+    private String title;
+
+    /**
      * 对话消息(JSON数组)
      */
     private String messages;

@@ -13,6 +13,7 @@ import com.ainotes.entity.AIConversation.AiMessage;
 import com.ainotes.entity.Note;
 import com.ainotes.mapper.AIConversationMapper;
 import com.ainotes.service.AIService;
+import com.ainotes.interceptor.PromptInjectionInterceptor;
 import com.ainotes.service.NoteService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -50,6 +51,9 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
 
     @Override
     public AIChatResponse chat(Long userId, AIChatRequest request) {
+        if (PromptInjectionInterceptor.containsInjection(request.getMessage())) {
+            throw new BusinessException("消息包含不安全内容，请修改后重试");
+        }
         // 获取AI Provider
         AIProvider provider = getProviderWithApiKey(userId, request.getProvider());
 
@@ -77,8 +81,51 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
 
     @Override
     public SseEmitter chatStream(Long userId, AIChatRequest request) {
-        // 流式对话将在后续版本中实现
-        throw new BusinessException("流式对话功能暂未实现");
+        if (PromptInjectionInterceptor.containsInjection(request.getMessage())) {
+            SseEmitter errEmitter = new SseEmitter();
+            try { errEmitter.send(SseEmitter.event().data("{\"error\":\"消息包含不安全内容\"}")); } catch (Exception ignored) {}
+            errEmitter.complete();
+            return errEmitter;
+        }
+        SseEmitter emitter = new SseEmitter(300_000L); // 5min timeout
+        AIProvider provider = getProviderWithApiKey(userId, request.getProvider());
+        AIConversation conversation = getOrCreateConversation(userId, request);
+        List<Map<String, String>> messages = buildMessagesForChat(conversation, request.getMessage());
+
+        StringBuilder fullResponse = new StringBuilder();
+
+        emitter.onCompletion(() -> {});
+        emitter.onTimeout(emitter::complete);
+        emitter.onError(e -> emitter.complete());
+
+        // Save user message immediately
+        conversation.getMessageList().add(new AIConversation.AiMessage("user", request.getMessage()));
+
+        provider.chatStream(request.getModel(), messages,
+                token -> {
+                    fullResponse.append(token);
+                    try {
+                        emitter.send(SseEmitter.event().data("{\"content\":\"" + token.replace("\"", "\\\"") + "\"}", org.springframework.http.MediaType.APPLICATION_JSON));
+                    } catch (Exception e) {
+                        emitter.completeWithError(e);
+                    }
+                },
+                () -> {
+                    // Save assistant message
+                    conversation.getMessageList().add(new AIConversation.AiMessage("assistant", fullResponse.toString()));
+                    if (conversation.getMessageList().size() > 20) {
+                        conversation.setMessageList(conversation.getMessageList().subList(
+                                conversation.getMessageList().size() - 20, conversation.getMessageList().size()));
+                    }
+                    updateById(conversation);
+                    try {
+                        emitter.send(SseEmitter.event().data("{\"conversationId\":" + conversation.getId() + ",\"done\":true}", org.springframework.http.MediaType.APPLICATION_JSON));
+                        emitter.complete();
+                    } catch (Exception ignored) {}
+                }
+        );
+
+        return emitter;
     }
 
     @Override
@@ -137,6 +184,32 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
             throw new BusinessException("无权删除此对话");
         }
         removeById(conversationId);
+    }
+
+    @Override
+    public void renameConversation(Long userId, Long conversationId, String title) {
+        AIConversation conversation = getById(conversationId);
+        if (conversation == null) {
+            throw new BusinessException("对话不存在");
+        }
+        if (!conversation.getUserId().equals(userId)) {
+            throw new BusinessException("无权操作此对话");
+        }
+        conversation.setTitle(title);
+        updateById(conversation);
+    }
+
+    @Override
+    public AIConversation createConversation(Long userId, Long noteId, String provider, String model) {
+        AIConversation conversation = new AIConversation();
+        conversation.setUserId(userId);
+        conversation.setNoteId(noteId);
+        conversation.setAiProvider(provider);
+        conversation.setAiModel(model);
+        conversation.setMessageList(new ArrayList<>());
+        conversation.setTitle("新对话");
+        save(conversation);
+        return conversation;
     }
 
     @Override

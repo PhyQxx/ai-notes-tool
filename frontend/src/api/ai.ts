@@ -24,10 +24,13 @@ export function chat(data: AIChatRequest): Promise<{ conversationId: number; mes
 export function chatStream(
   data: AIChatRequest,
   onMessage: (msg: string) => void,
-  onDone: () => void,
-  onError: (err: Error) => void
-): void {
+  onDone: (conversationId?: number) => void,
+  onError: (err: Error) => void,
+  signal?: AbortSignal
+): AbortController | null {
   const token = localStorage.getItem('token');
+  const controller = new AbortController();
+  const effectiveSignal = signal || controller.signal;
 
   fetch('/api/ai/chat/stream', {
     method: 'POST',
@@ -35,7 +38,8 @@ export function chatStream(
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : ''
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    signal: effectiveSignal
   })
     .then(async (response) => {
       if (!response.ok) {
@@ -73,6 +77,10 @@ export function chatStream(
                 if (parsed.content) {
                   onMessage(parsed.content);
                 }
+                if (parsed.done && parsed.conversationId) {
+                  onDone(parsed.conversationId);
+                  return;
+                }
               } catch (e) {
                 console.warn('解析流数据失败:', e);
               }
@@ -85,8 +93,12 @@ export function chatStream(
       }
     })
     .catch((error) => {
-      onError(error);
+      if ((error as Error).name !== 'AbortError') {
+        onError(error);
+      }
     });
+
+  return controller;
 }
 
 /**
@@ -115,6 +127,20 @@ export function getConversation(id: number): Promise<AIConversation> {
  */
 export function deleteConversation(id: number): Promise<void> {
   return http.delete(`/ai/conversations/${id}`);
+}
+
+/**
+ * 重命名对话
+ */
+export function renameConversation(id: number, title: string): Promise<void> {
+  return http.put(`/ai/conversations/${id}/rename`, { title });
+}
+
+/**
+ * 新建对话
+ */
+export function createConversation(data?: { noteId?: number; provider?: string; model?: string }): Promise<any> {
+  return http.post('/ai/conversations', data || {});
 }
 
 /**

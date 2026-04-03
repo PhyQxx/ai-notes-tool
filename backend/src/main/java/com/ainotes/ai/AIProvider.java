@@ -24,14 +24,14 @@ public interface AIProvider {
     String chat(String model, List<Map<String, String>> messages);
 
     /**
-     * 流式对话（返回SSE）
+     * 流式对话（回调每个token）
      *
      * @param model    模型名称
      * @param messages 消息列表
-     * @return 流式响应内容
-     * @throws BusinessException 调用失败时抛出
+     * @param onToken  收到token时的回调
+     * @param onDone   流式结束回调
      */
-    String chatStream(String model, List<Map<String, String>> messages);
+    void chatStream(String model, List<Map<String, String>> messages, java.util.function.Consumer<String> onToken, Runnable onDone);
 
     /**
      * 获取提供商名称

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -96,9 +97,62 @@ public class DeepSeekProvider implements AIProvider {
     }
 
     @Override
-    public String chatStream(String model, List<Map<String, String>> messages) {
-        // 流式对话将在后续版本中实现
-        throw new BusinessException("流式对话功能暂未实现");
+    public void chatStream(String model, List<Map<String, String>> messages, java.util.function.Consumer<String> onToken, Runnable onDone) {
+        try {
+            String url = aiConfig.getDeepseek().getBaseUrl() + CHAT_COMPLETIONS_URL;
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", model);
+            requestBody.put("messages", messages);
+            requestBody.put("stream", true);
+
+            RequestBody body = RequestBody.create(JSON.toJSONString(requestBody), MediaType.parse("application/json; charset=utf-8"));
+            Request request = new Request.Builder()
+                    .url(url)
+                    .addHeader("Authorization", "Bearer " + apiKey)
+                    .addHeader("Content-Type", "application/json")
+                    .post(body)
+                    .build();
+
+            httpClient.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    log.error("DeepSeek stream error", e);
+                    onDone.run();
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) {
+                    try (ResponseBody responseBody = response.body()) {
+                        if (!response.isSuccessful()) {
+                            log.error("DeepSeek stream HTTP error: {}", response.code());
+                            onDone.run();
+                            return;
+                        }
+                        BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(responseBody.byteStream()));
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            if (line.startsWith("data: ")) {
+                                String data = line.substring(6).trim();
+                                if ("[DONE]".equals(data)) break;
+                                try {
+                                    JSONObject json = JSON.parseObject(data);
+                                    String content = json.getJSONArray("choices")
+                                            .getJSONObject(0).getJSONObject("delta").getString("content");
+                                    if (content != null) onToken.accept(content);
+                                } catch (Exception ignored) {}
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("DeepSeek stream read error", e);
+                    } finally {
+                        onDone.run();
+                    }
+                }
+            });
+        } catch (Exception e) {
+            log.error("DeepSeek stream init error", e);
+            onDone.run();
+        }
     }
 
     @Override

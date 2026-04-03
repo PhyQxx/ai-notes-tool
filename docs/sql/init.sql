@@ -172,6 +172,7 @@ CREATE TABLE t_ai_conversation (
     note_id BIGINT DEFAULT NULL COMMENT '关联笔记ID',
     ai_provider VARCHAR(50) NOT NULL COMMENT 'AI提供商：deepseek-DeepSeek，glm-智谱GLM',
     ai_model VARCHAR(100) NOT NULL COMMENT 'AI模型名称',
+    title VARCHAR(200) DEFAULT '新对话' COMMENT '对话标题',
     messages JSON COMMENT '对话消息(JSON数组)',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

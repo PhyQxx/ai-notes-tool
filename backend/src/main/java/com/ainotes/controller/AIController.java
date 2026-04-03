@@ -126,6 +126,31 @@ public class AIController {
     }
 
     /**
+     * 重命名对话
+     */
+    @PutMapping("/conversations/{id}/rename")
+    @Operation(summary = "重命名对话")
+    public Result<Void> renameConversation(@PathVariable Long id, @RequestBody Map<String, String> body, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        aiService.renameConversation(userId, id, body.get("title"));
+        return Result.success("重命名成功", null);
+    }
+
+    /**
+     * 新建对话
+     */
+    @PostMapping("/conversations")
+    @Operation(summary = "新建对话")
+    public Result<AIConversation> createConversation(@RequestBody(required = false) Map<String, Object> body, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        Long noteId = body != null && body.containsKey("noteId") ? Long.valueOf(body.get("noteId").toString()) : null;
+        String provider = body != null && body.containsKey("provider") ? body.get("provider").toString() : "deepseek";
+        String model = body != null && body.containsKey("model") ? body.get("model").toString() : "deepseek-chat";
+        AIConversation conv = aiService.createConversation(userId, noteId, provider, model);
+        return Result.success(conv);
+    }
+
+    /**
      * 获取AI配置
      *
      * @return AI配置信息

@@ -81,9 +81,9 @@ export const useAIStore = defineStore('ai', () => {
     };
 
     if (!currentConversation.value) {
-      // 创建新对话
+      // Create new conversation via API
       currentConversation.value = {
-        id: Date.now(),
+        id: 0, // Will be set by server
         noteId,
         aiProvider: provider,
         aiModel: model,
@@ -92,7 +92,6 @@ export const useAIStore = defineStore('ai', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      conversations.value.unshift(currentConversation.value);
     } else {
       // 添加到现有对话
       currentConversation.value.messages.push(userMessage);
