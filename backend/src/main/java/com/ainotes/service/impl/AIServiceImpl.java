@@ -8,10 +8,12 @@ import com.ainotes.dto.request.AIConfigUpdateRequest;
 import com.ainotes.dto.request.AIGenerateRequest;
 import com.ainotes.dto.response.AIChatResponse;
 import com.ainotes.dto.response.AIConfigResponse;
+import com.ainotes.dto.response.AIConversationMessagesResponse;
+import com.ainotes.entity.AIChatMessage;
 import com.ainotes.entity.AIConversation;
-import com.ainotes.entity.AIConversation.AiMessage;
 import com.ainotes.entity.Note;
 import com.ainotes.mapper.AIConversationMapper;
+import com.ainotes.service.AIChatMessageService;
 import com.ainotes.service.AIService;
 import com.ainotes.interceptor.PromptInjectionInterceptor;
 import com.ainotes.service.NoteService;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Duration;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,31 +48,32 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
     private final AIProviderFactory providerFactory;
     private final NoteService noteService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final AIChatMessageService chatMessageService;
 
     private static final String AI_CONFIG_KEY_PREFIX = "ai:config:";
     private static final Duration CONFIG_CACHE_TTL = Duration.ofHours(1);
+    private static final int MAX_CONTEXT_ROUNDS = 20;
+    private static final String SYSTEM_PROMPT = "你是一个智能笔记助手，可以帮助用户整理笔记、回答问题、生成内容。请用简洁、准确的方式回答。";
 
     @Override
     public AIChatResponse chat(Long userId, AIChatRequest request) {
         if (PromptInjectionInterceptor.containsInjection(request.getMessage())) {
             throw new BusinessException("消息包含不安全内容，请修改后重试");
         }
-        // 获取AI Provider
         AIProvider provider = getProviderWithApiKey(userId, request.getProvider());
-
-        // 获取或创建对话
         AIConversation conversation = getOrCreateConversation(userId, request);
 
-        // 构建消息列表
-        List<Map<String, String>> messages = buildMessagesForChat(conversation, request.getMessage());
+        // Save user message
+        chatMessageService.saveMessage(conversation.getId(), "user", request.getMessage());
 
-        // 调用AI服务
+        // Build messages with context
+        List<Map<String, String>> messages = buildContextMessages(conversation.getId(), request.getMessage());
+
         String aiResponse = provider.chat(request.getModel(), messages);
 
-        // 保存消息到对话
-        saveChatMessages(conversation, request.getMessage(), aiResponse);
+        // Save assistant message
+        chatMessageService.saveMessage(conversation.getId(), "assistant", aiResponse);
 
-        // 构建响应
         AIChatResponse response = new AIChatResponse();
         response.setConversationId(conversation.getId());
         response.setMessage(aiResponse);
@@ -87,19 +91,21 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
             errEmitter.complete();
             return errEmitter;
         }
-        SseEmitter emitter = new SseEmitter(300_000L); // 5min timeout
+        SseEmitter emitter = new SseEmitter(300_000L);
         AIProvider provider = getProviderWithApiKey(userId, request.getProvider());
         AIConversation conversation = getOrCreateConversation(userId, request);
-        List<Map<String, String>> messages = buildMessagesForChat(conversation, request.getMessage());
+
+        // Save user message immediately
+        chatMessageService.saveMessage(conversation.getId(), "user", request.getMessage());
+
+        List<Map<String, String>> messages = buildContextMessages(conversation.getId(), request.getMessage());
 
         StringBuilder fullResponse = new StringBuilder();
+        Long convId = conversation.getId();
 
         emitter.onCompletion(() -> {});
         emitter.onTimeout(emitter::complete);
         emitter.onError(e -> emitter.complete());
-
-        // Save user message immediately
-        conversation.getMessageList().add(new AIConversation.AiMessage("user", request.getMessage()));
 
         provider.chatStream(request.getModel(), messages,
                 token -> {
@@ -111,15 +117,10 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
                     }
                 },
                 () -> {
-                    // Save assistant message
-                    conversation.getMessageList().add(new AIConversation.AiMessage("assistant", fullResponse.toString()));
-                    if (conversation.getMessageList().size() > 20) {
-                        conversation.setMessageList(conversation.getMessageList().subList(
-                                conversation.getMessageList().size() - 20, conversation.getMessageList().size()));
-                    }
+                    chatMessageService.saveMessage(convId, "assistant", fullResponse.toString());
                     updateById(conversation);
                     try {
-                        emitter.send(SseEmitter.event().data("{\"conversationId\":" + conversation.getId() + ",\"done\":true}", org.springframework.http.MediaType.APPLICATION_JSON));
+                        emitter.send(SseEmitter.event().data("{\"conversationId\":" + convId + ",\"done\":true}", org.springframework.http.MediaType.APPLICATION_JSON));
                         emitter.complete();
                     } catch (Exception ignored) {}
                 }
@@ -184,6 +185,7 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
             throw new BusinessException("无权删除此对话");
         }
         removeById(conversationId);
+        chatMessageService.deleteByConversationId(conversationId);
     }
 
     @Override
@@ -308,42 +310,67 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
     }
 
     /**
-     * 构建对话消息列表
+     * 构建带上下文的消息列表
      */
-    private List<Map<String, String>> buildMessagesForChat(AIConversation conversation, String userMessage) {
+    private List<Map<String, String>> buildContextMessages(Long conversationId, String currentMessage) {
         List<Map<String, String>> messages = new ArrayList<>();
 
-        // 添加历史消息
-        List<AiMessage> historyMessages = conversation.getMessageList();
-        for (AiMessage msg : historyMessages) {
+        // System prompt
+        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+
+        // Recent context messages (max 20 rounds)
+        List<AIChatMessage> recentMessages = chatMessageService.getRecentMessages(conversationId, MAX_CONTEXT_ROUNDS);
+        for (AIChatMessage msg : recentMessages) {
             messages.add(Map.of("role", msg.getRole(), "content", msg.getContent()));
         }
 
-        // 添加当前用户消息
-        messages.add(Map.of("role", "user", "content", userMessage));
+        // Current user message is already saved, so it's included in recentMessages
 
         return messages;
     }
 
-    /**
-     * 保存对话消息
-     */
-    private void saveChatMessages(AIConversation conversation, String userMessage, String aiMessage) {
-        List<AiMessage> messages = conversation.getMessageList();
-
-        // 添加用户消息
-        messages.add(new AiMessage("user", userMessage));
-
-        // 添加AI回复
-        messages.add(new AiMessage("assistant", aiMessage));
-
-        // 限制消息数量（保留最近20条）
-        if (messages.size() > 20) {
-            messages = messages.subList(messages.size() - 20, messages.size());
+    @Override
+    public AIConversationMessagesResponse getConversationMessages(Long userId, Long conversationId) {
+        AIConversation conv = getById(conversationId);
+        if (conv == null || !conv.getUserId().equals(userId)) {
+            throw new BusinessException("对话不存在或无权访问");
         }
 
-        conversation.setMessageList(messages);
-        updateById(conversation);
+        List<AIChatMessage> messages = chatMessageService.getMessages(conversationId);
+        int totalTokens = chatMessageService.getTotalTokens(conversationId);
+        int messageCount = messages.size();
+        int usedRounds = messageCount / 2;
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        List<AIConversationMessagesResponse.MessageItem> items = messages.stream()
+                .map(m -> AIConversationMessagesResponse.MessageItem.builder()
+                        .id(m.getId())
+                        .role(m.getRole())
+                        .content(m.getContent())
+                        .tokenCount(m.getTokenCount())
+                        .createdAt(m.getCreatedAt() != null ? m.getCreatedAt().format(fmt) : null)
+                        .build())
+                .toList();
+
+        return AIConversationMessagesResponse.builder()
+                .conversationId(conversationId)
+                .messages(items)
+                .messageCount(messageCount)
+                .totalTokens(totalTokens)
+                .maxRounds(MAX_CONTEXT_ROUNDS)
+                .usedRounds(usedRounds)
+                .build();
+    }
+
+    @Override
+    public void clearConversationMessages(Long userId, Long conversationId) {
+        AIConversation conv = getById(conversationId);
+        if (conv == null || !conv.getUserId().equals(userId)) {
+            throw new BusinessException("对话不存在或无权访问");
+        }
+        chatMessageService.clearMessages(conversationId);
+        log.info("用户 {} 清除了对话 {} 的上下文", userId, conversationId);
     }
 
     /**

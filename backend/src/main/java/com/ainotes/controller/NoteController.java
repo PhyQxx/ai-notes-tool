@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.ainotes.dto.query.NoteQueryRequest;
 import com.ainotes.dto.request.CreateNoteRequest;
 import com.ainotes.dto.request.UpdateNoteRequest;
+import com.ainotes.dto.response.SearchResultDTO;
 import com.ainotes.entity.Note;
 import com.ainotes.service.NoteService;
 import com.ainotes.common.result.Result;
@@ -114,6 +115,17 @@ public class NoteController {
     public Result<IPage<Note>> searchNotes(@RequestParam String keyword, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         IPage<Note> page = noteService.searchNotes(userId, keyword);
+        return Result.success(page);
+    }
+
+    @GetMapping("/search/fulltext")
+    @Operation(summary = "全文搜索笔记")
+    public Result<IPage<SearchResultDTO>> fullTextSearch(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "all") String scope,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        IPage<SearchResultDTO> page = noteService.fullTextSearch(userId, keyword, scope);
         return Result.success(page);
     }
 

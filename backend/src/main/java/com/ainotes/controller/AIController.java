@@ -6,6 +6,7 @@ import com.ainotes.dto.request.AIGenerateRequest;
 import com.ainotes.dto.request.AIConfigUpdateRequest;
 import com.ainotes.dto.response.AIChatResponse;
 import com.ainotes.dto.response.AIConfigResponse;
+import com.ainotes.dto.response.AIConversationMessagesResponse;
 import com.ainotes.entity.AIConversation;
 import com.ainotes.service.AIService;
 import com.ainotes.common.result.Result;
@@ -187,6 +188,27 @@ public class AIController {
     public Result<List<AIConfigResponse.ProviderInfo>> getProviders() {
         List<AIConfigResponse.ProviderInfo> providers = aiService.getProviders();
         return Result.success(providers);
+    }
+
+    /**
+     * 获取对话消息列表（含上下文统计）
+     */
+    @GetMapping("/conversations/{id}/messages")
+    @Operation(summary = "获取对话消息列表")
+    public Result<AIConversationMessagesResponse> getConversationMessages(@PathVariable Long id, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return Result.success(aiService.getConversationMessages(userId, id));
+    }
+
+    /**
+     * 清除对话上下文（重新开始）
+     */
+    @DeleteMapping("/conversations/{id}/messages")
+    @Operation(summary = "清除对话上下文")
+    public Result<Void> clearConversationMessages(@PathVariable Long id, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        aiService.clearConversationMessages(userId, id);
+        return Result.success("上下文已清除", null);
     }
 
 }

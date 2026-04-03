@@ -62,6 +62,25 @@ export function searchNotes(keyword: string, params?: {
   });
 }
 
+export interface SearchResult {
+  id: number;
+  title: string;
+  titleHighlight: string;
+  contentPreview: string;
+  contentType: string;
+  isFavorite: boolean;
+  isTop: boolean;
+  tags: string;
+  updatedAt: string;
+  matchCount: number;
+}
+
+export function fullTextSearch(keyword: string, scope: string = 'all'): Promise<PageResult<SearchResult>> {
+  return http.get('/notes/search/fulltext', {
+    params: { keyword, scope }
+  });
+}
+
 /**
  * 收藏/取消收藏笔记
  */

@@ -5,6 +5,7 @@ import com.ainotes.dto.request.AIGenerateRequest;
 import com.ainotes.dto.request.AIConfigUpdateRequest;
 import com.ainotes.dto.response.AIChatResponse;
 import com.ainotes.dto.response.AIConfigResponse;
+import com.ainotes.dto.response.AIConversationMessagesResponse;
 import com.ainotes.entity.AIConversation;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -105,5 +106,15 @@ public interface AIService {
      * @return 提供商信息列表
      */
     List<AIConfigResponse.ProviderInfo> getProviders();
+
+    /**
+     * 获取对话消息列表（含 token 统计）
+     */
+    AIConversationMessagesResponse getConversationMessages(Long userId, Long conversationId);
+
+    /**
+     * 清除对话上下文
+     */
+    void clearConversationMessages(Long userId, Long conversationId);
 
 }

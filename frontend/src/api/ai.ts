@@ -163,3 +163,24 @@ export function updateConfig(data: AIConfig): Promise<void> {
 export function getProviders(): Promise<AIProviderInfo[]> {
   return http.get('/ai/providers');
 }
+
+/**
+ * 获取对话消息列表（含上下文统计）
+ */
+export function getConversationMessages(id: number): Promise<{
+  conversationId: number;
+  messages: { id: number; role: string; content: string; tokenCount: number; createdAt: string }[];
+  messageCount: number;
+  totalTokens: number;
+  maxRounds: number;
+  usedRounds: number;
+}> {
+  return http.get(`/ai/conversations/${id}/messages`);
+}
+
+/**
+ * 清除对话上下文
+ */
+export function clearConversationMessages(id: number): Promise<void> {
+  return http.delete(`/ai/conversations/${id}/messages`);
+}

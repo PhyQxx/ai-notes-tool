@@ -15,6 +15,12 @@
           </template>
         </el-input>
 
+        <el-select v-model="searchScope" placeholder="搜索范围" style="width: 120px">
+          <el-option label="全部" value="all" />
+          <el-option label="标题" value="title" />
+          <el-option label="内容" value="content" />
+        </el-select>
+
         <el-button @click="handleSearch">
           <el-icon><Search /></el-icon>
           搜索
@@ -90,7 +96,7 @@
 
     <div v-else class="notes-list">
       <el-card
-        v-for="note in notes"
+        v-for="note in displayNotes"
         :key="note.id"
         class="note-card"
         shadow="hover"
@@ -119,12 +125,15 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoteStore } from '@/stores/note';
 import NoteCard from '@/components/common/NoteCard.vue';
+import { fullTextSearch } from '@/api/note';
 import type { Folder } from '@/types';
 
 const router = useRouter();
 const noteStore = useNoteStore();
 
 const searchKeyword = ref('');
+const searchScope = ref('all');
+const searchResults = ref<any[]>([]);
 const sortBy = ref('updatedAt');
 const folderFilter = ref(0);
 const timeFilter = ref('');
@@ -150,6 +159,19 @@ const pageSize = computed({
   }
 });
 
+const isSearchMode = computed(() => searchKeyword.value.trim().length > 0);
+
+const displayNotes = computed(() => {
+  if (isSearchMode.value && searchResults.value.length > 0) {
+    return searchResults.value.map(r => ({
+      ...r,
+      content: r.contentPreview || '',
+      tags: r.tags ? r.tags.split(',').filter(Boolean) : []
+    }));
+  }
+  return notes.value;
+});
+
 // 扁平化文件夹列表
 const flatFolders = computed<Folder[]>(() => {
   const result: Folder[] = [];
@@ -173,19 +195,26 @@ const highlightKeyword = (text: string, keyword: string) => {
   return text.replace(regex, '<span style="background-color: var(--el-color-warning-light-7); padding: 0 2px; border-radius: 2px;">$1</span>');
 };
 
-const handleSearch = () => {
+const handleSearch = async () => {
   const keyword = searchKeyword.value.trim();
   if (keyword) {
-    // 保存到最近搜索
     saveRecentSearch(keyword);
-    noteStore.search(keyword);
+    try {
+      const result = await fullTextSearch(keyword, searchScope.value);
+      searchResults.value = result.records || [];
+    } catch (e) {
+      console.error('全文搜索失败:', e);
+      searchResults.value = [];
+    }
   } else {
+    searchResults.value = [];
     handleFilter();
   }
 };
 
 const handleClearSearch = () => {
   searchKeyword.value = '';
+  searchResults.value = [];
   handleFilter();
 };
 

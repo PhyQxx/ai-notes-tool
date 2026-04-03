@@ -7,6 +7,7 @@ import com.ainotes.common.exception.BusinessException;
 import com.ainotes.dto.query.NoteQueryRequest;
 import com.ainotes.dto.request.CreateNoteRequest;
 import com.ainotes.dto.request.UpdateNoteRequest;
+import com.ainotes.dto.response.SearchResultDTO;
 import com.ainotes.entity.Note;
 import com.ainotes.entity.SpaceMember;
 import com.ainotes.mapper.NoteMapper;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -354,6 +356,121 @@ public class NoteServiceImpl implements NoteService {
         // 分页查询（默认每页20条）
         Page<Note> page = new Page<>(1, 20);
         return noteMapper.selectPage(page, queryWrapper);
+    }
+
+    @Override
+    public IPage<SearchResultDTO> fullTextSearch(Long userId, String keyword, String scope) {
+        LambdaQueryWrapper<Note> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Note::getUserId, userId);
+
+        if (StringUtils.hasText(keyword)) {
+            if ("title".equals(scope)) {
+                queryWrapper.like(Note::getTitle, keyword);
+            } else if ("content".equals(scope)) {
+                queryWrapper.like(Note::getContent, keyword);
+            } else {
+                // all: search title, content, tags
+                queryWrapper.and(wrapper -> wrapper
+                        .like(Note::getTitle, keyword)
+                        .or()
+                        .like(Note::getContent, keyword)
+                        .or()
+                        .like(Note::getTags, keyword)
+                );
+            }
+        }
+
+        queryWrapper.orderByDesc(Note::getIsTop);
+        queryWrapper.orderByDesc(Note::getUpdatedAt);
+
+        Page<Note> page = new Page<>(1, 50);
+        IPage<Note> notePage = noteMapper.selectPage(page, queryWrapper);
+
+        // Convert to SearchResultDTO with highlighting
+        List<SearchResultDTO> records = notePage.getRecords().stream().map(note -> {
+            SearchResultDTO dto = new SearchResultDTO();
+            dto.setId(note.getId());
+            dto.setTitle(note.getTitle());
+            dto.setContentType(note.getContentType());
+            dto.setIsFavorite(note.getIsFavorite());
+            dto.setIsTop(note.getIsTop());
+            dto.setTags(note.getTags());
+            dto.setUpdatedAt(note.getUpdatedAt());
+
+            String keywordLower = keyword.toLowerCase();
+            int matchCount = 0;
+
+            // Title highlight
+            String titleText = note.getTitle() != null ? note.getTitle() : "";
+            String titleLower = titleText.toLowerCase();
+            int titleMatches = countOccurrences(titleLower, keywordLower);
+            matchCount += titleMatches;
+            dto.setTitleHighlight(highlightKeyword(titleText, keyword));
+
+            // Content preview
+            String content = note.getContent() != null ? note.getContent() : "";
+            // Strip HTML tags for preview
+            String plainContent = content.replaceAll("<[^>]*>", "");
+            int contentMatches = countOccurrences(plainContent.toLowerCase(), keywordLower);
+            matchCount += contentMatches;
+            dto.setContentPreview(generatePreview(plainContent, keyword, 120));
+            dto.setContentPreview(highlightKeyword(dto.getContentPreview(), keyword));
+
+            // Tag matches
+            String tags = note.getTags() != null ? note.getTags() : "";
+            matchCount += countOccurrences(tags.toLowerCase(), keywordLower);
+
+            dto.setMatchCount(matchCount);
+            return dto;
+        }).sorted((a, b) -> {
+            // Sort by match count desc, then by updatedAt desc
+            if (b.getMatchCount() != a.getMatchCount()) {
+                return b.getMatchCount() - a.getMatchCount();
+            }
+            return b.getUpdatedAt().compareTo(a.getUpdatedAt());
+        }).collect(java.util.stream.Collectors.toList());
+
+        // Build result page
+        Page<SearchResultDTO> resultPage = new Page<>(notePage.getCurrent(), notePage.getSize(), notePage.getTotal());
+        resultPage.setRecords(records);
+        return resultPage;
+    }
+
+    private String highlightKeyword(String text, String keyword) {
+        if (text == null || keyword == null || keyword.isEmpty()) return text;
+        String escaped = keyword.replaceAll("([\\\\\\[\\](){}*+?.,^$|])", "\\\\$1");
+        return text.replaceAll("(?i)(" + escaped + ")", "<em>$1</em>");
+    }
+
+    private String generatePreview(String content, String keyword, int maxLen) {
+        if (content == null || content.isEmpty()) return "";
+        if (keyword == null || keyword.isEmpty()) {
+            return content.length() > maxLen ? content.substring(0, maxLen) + "..." : content;
+        }
+        String keywordLower = keyword.toLowerCase();
+        String contentLower = content.toLowerCase();
+        int idx = contentLower.indexOf(keywordLower);
+        if (idx < 0) {
+            return content.length() > maxLen ? content.substring(0, maxLen) + "..." : content;
+        }
+        int contextRadius = Math.max(20, (maxLen - keyword.length()) / 2);
+        int start = Math.max(0, idx - contextRadius);
+        int end = Math.min(content.length(), idx + keyword.length() + contextRadius);
+        String preview = content.substring(start, end);
+        if (start > 0) preview = "..." + preview;
+        if (end < content.length()) preview = preview + "...";
+        return preview;
+    }
+
+    private int countOccurrences(String text, String keyword) {
+        if (text == null || keyword == null || keyword.isEmpty()) return 0;
+        int count = 0;
+        int idx = 0;
+        while ((idx = text.indexOf(keyword, idx)) != -1) {
+            count++;
+            idx += keyword.length();
+        }
+        return count;
     }
 
     @Override

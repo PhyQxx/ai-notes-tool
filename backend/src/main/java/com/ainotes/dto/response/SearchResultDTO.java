@@ -10,8 +10,8 @@ public class SearchResultDTO implements Serializable {
     private String titleHighlight;
     private String contentPreview;
     private String contentType;
-    private Boolean isFavorite;
-    private Boolean isTop;
+    private Integer isFavorite;
+    private Integer isTop;
     private String tags;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -34,11 +34,11 @@ public class SearchResultDTO implements Serializable {
     public String getContentType() { return contentType; }
     public void setContentType(String contentType) { this.contentType = contentType; }
 
-    public Boolean getIsFavorite() { return isFavorite; }
-    public void setIsFavorite(Boolean isFavorite) { this.isFavorite = isFavorite; }
+    public Boolean getIsFavorite() { return isFavorite != null && isFavorite == 1; }
+    public void setIsFavorite(Integer isFavorite) { this.isFavorite = isFavorite; }
 
-    public Boolean getIsTop() { return isTop; }
-    public void setIsTop(Boolean isTop) { this.isTop = isTop; }
+    public Boolean getIsTop() { return isTop != null && isTop == 1; }
+    public void setIsTop(Integer isTop) { this.isTop = isTop; }
 
     public String getTags() { return tags; }
     public void setTags(String tags) { this.tags = tags; }

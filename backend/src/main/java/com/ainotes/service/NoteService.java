@@ -1,6 +1,7 @@
 package com.ainotes.service;
 
 import com.ainotes.dto.query.NoteQueryRequest;
+import com.ainotes.dto.response.SearchResultDTO;
 import com.ainotes.dto.request.CreateNoteRequest;
 import com.ainotes.dto.request.UpdateNoteRequest;
 import com.ainotes.entity.Note;

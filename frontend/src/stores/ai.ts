@@ -12,7 +12,9 @@ import {
   deleteConversation as deleteConversationApi,
   getConfig as getConfigApi,
   updateConfig as updateConfigApi,
-  getProviders
+  getProviders,
+  getConversationMessages,
+  clearConversationMessages as clearMessagesApi
 } from '../api';
 import type {
   AIConversation,
@@ -33,6 +35,7 @@ export const useAIStore = defineStore('ai', () => {
   const isStreaming = ref(false);
   const streamMessage = ref('');
   const loading = ref(false);
+  const contextInfo = ref<{ messageCount: number; totalTokens: number; maxRounds: number; usedRounds: number } | null>(null);
 
   // Actions
   /**
@@ -58,7 +61,20 @@ export const useAIStore = defineStore('ai', () => {
     loading.value = true;
     try {
       const conv = await getConversationApi(id);
+      // Load messages from the new messages API
+      const msgResult = await getConversationMessages(id);
+      const messages: AIChatMessage[] = msgResult.messages.map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+      conv.messages = messages;
       currentConversation.value = conv;
+      contextInfo.value = {
+        messageCount: msgResult.messageCount,
+        totalTokens: msgResult.totalTokens,
+        maxRounds: msgResult.maxRounds,
+        usedRounds: msgResult.usedRounds
+      };
     } catch (error) {
       console.error('获取对话详情失败:', error);
       throw error;
@@ -118,19 +134,30 @@ export const useAIStore = defineStore('ai', () => {
           message: content,
           conversationId: currentConversation.value?.id
         },
-        // onMessage
         (chunk: string) => {
           streamMessage.value += chunk;
           assistantMessage.content = streamMessage.value;
         },
-        // onDone
-        () => {
+        (convId) => {
           isStreaming.value = false;
           streamMessage.value = '';
-          currentConversation.value!.updatedAt = new Date().toISOString();
+          // Update conversationId if it was a new conversation
+          if (currentConversation.value && convId) {
+            currentConversation.value.id = convId;
+          }
+          // Refresh context info
+          if (currentConversation.value?.id) {
+            getConversationMessages(currentConversation.value.id).then(r => {
+              contextInfo.value = {
+                messageCount: r.messageCount,
+                totalTokens: r.totalTokens,
+                maxRounds: r.maxRounds,
+                usedRounds: r.usedRounds
+              };
+            }).catch(() => {});
+          }
           resolve();
         },
-        // onError
         (err: Error) => {
           isStreaming.value = false;
           streamMessage.value = '';
@@ -245,6 +272,15 @@ export const useAIStore = defineStore('ai', () => {
    */
   function newConversation(): void {
     currentConversation.value = null;
+    contextInfo.value = null;
+  }
+
+  async function clearContext(conversationId: number): Promise<void> {
+    await clearMessagesApi(conversationId);
+    if (currentConversation.value?.id === conversationId) {
+      currentConversation.value.messages = [];
+      contextInfo.value = null;
+    }
   }
 
   return {
@@ -255,6 +291,7 @@ export const useAIStore = defineStore('ai', () => {
     isStreaming,
     streamMessage,
     loading,
+    contextInfo,
     fetchConversations,
     fetchConversation,
     sendMessage,
@@ -263,6 +300,7 @@ export const useAIStore = defineStore('ai', () => {
     fetchConfig,
     updateConfig,
     fetchProviders,
-    newConversation
+    newConversation,
+    clearContext
   };
 });

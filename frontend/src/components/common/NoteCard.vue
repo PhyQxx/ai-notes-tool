@@ -1,7 +1,7 @@
 <template>
   <div class="note-card" @click="$emit('click')">
     <div class="note-header">
-      <h4 class="note-title">{{ note.title || '无标题' }}</h4>
+      <h4 class="note-title" v-html="note.titleHighlight || note.title || '无标题'"></h4>
       <div class="note-actions" @click.stop>
         <el-icon
           :class="{ 'is-active': note.isFavorite }"
@@ -15,7 +15,8 @@
       </div>
     </div>
 
-    <p class="note-preview">{{ note.content.substring(0, 100) }}...</p>
+    <p class="note-preview" v-if="note.contentPreview" v-html="note.contentPreview"></p>
+    <p v-else class="note-preview">{{ (note.content || '').substring(0, 100) }}...</p>
 
     <div class="note-meta">
       <div class="note-tags">
@@ -58,6 +59,15 @@ const formatDate = (date: string) => {
 
 <style scoped lang="scss">
 .note-card {
+  :deep(.search-highlight),
+  :deep(em) {
+    color: var(--el-color-primary);
+    font-weight: bold;
+    background: var(--el-color-primary-light-9);
+    padding: 0 2px;
+    border-radius: 2px;
+    font-style: normal;
+  }
   .note-header {
     display: flex;
     align-items: flex-start;
