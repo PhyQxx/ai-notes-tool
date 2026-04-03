@@ -11,13 +11,36 @@ const service: AxiosInstance = axios.create({
   }
 });
 
+// CSRF Token 缓存
+let csrfToken: string | null = null;
+
+async function getCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  const res = await fetch('/api/csrf/token');
+  const data = await res.json();
+  if (data.code === 200 && data.data?.token) {
+    csrfToken = data.data.token;
+    return csrfToken;
+  }
+  return '';
+}
+
 // 请求拦截器
 service.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     // 自动添加JWT Token
     const token = getToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // 写请求添加 CSRF Token
+    const method = (config.method || 'get').toUpperCase();
+    if (['POST', 'PUT', 'DELETE'].includes(method) && config.url && !config.url.startsWith('/auth/')) {
+      const csrf = await getCsrfToken();
+      if (csrf && config.headers) {
+        config.headers['X-CSRF-Token'] = csrf;
+        csrfToken = null; // CSRF token is one-time use, refetch next time
+      }
     }
     return config;
   },
@@ -50,6 +73,11 @@ service.interceptors.response.use(
       removeToken();
       window.location.href = '/login';
       return Promise.reject(error);
+    }
+
+    // CSRF Token 失效，刷新重试
+    if (response && response.status === 403 && error.config) {
+      csrfToken = null;
     }
 
     // 其他错误

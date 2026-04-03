@@ -1,9 +1,7 @@
 package com.ainotes.config;
 
-import com.ainotes.interceptor.RateLimitInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -13,13 +11,5 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private final RateLimitInterceptor rateLimitInterceptor;
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/**")
-                .excludePathPatterns("/auth/**", "/doc.html", "/swagger-resources/**",
-                        "/webjars/**", "/v3/api-docs/**", "/swagger-ui/**");
-    }
+    // RateLimitInterceptor replaced by RateLimitFilter (component-based)
 }

@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Security Configuration
@@ -22,6 +23,9 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final XssFilter xssFilter;
+    private final RateLimitFilter rateLimitFilter;
+    private final CsrfFilter csrfFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -46,13 +50,19 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         // 放行公开分享
                         .requestMatchers("/share/**").permitAll()
+                        // 放行CSRF Token获取
+                        .requestMatchers("/csrf/**").permitAll()
                         // 放行CORS预检
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // 其他请求需要认证
                         .anyRequest().authenticated()
                 )
                 // 添加JWT过滤器
-                .addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // 添加安全过滤器
+                .addFilterBefore(xssFilter, JwtAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, XssFilter.class)
+                .addFilterBefore(csrfFilter, RateLimitFilter.class);
 
         return http.build();
     }
