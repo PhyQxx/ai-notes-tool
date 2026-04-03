@@ -33,6 +33,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/notes/NotesView.vue')
       },
       {
+        path: 'notes/recent',
+        name: 'NotesRecent',
+        component: () => import('@/views/notes/NotesView.vue'),
+        props: { mode: 'recent' }
+      },
+      {
+        path: 'notes/favorites',
+        name: 'NotesFavorites',
+        component: () => import('@/views/notes/NotesView.vue'),
+        props: { mode: 'favorites' }
+      },
+      {
         path: 'notes/:id',
         name: 'NoteEdit',
         component: () => import('@/views/notes/NoteEditView.vue')

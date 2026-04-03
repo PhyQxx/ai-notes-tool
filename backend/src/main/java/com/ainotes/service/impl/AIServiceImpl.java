@@ -441,4 +441,74 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
         return prompt.toString();
     }
 
+    @Override
+    public String summarize(Long userId, Long noteId, String content) {
+        String text = resolveContent(userId, noteId, content);
+        if (text == null || text.isBlank()) {
+            throw new BusinessException("笔记内容为空，无法总结");
+        }
+        return callAssistant(userId, "你是一个笔记助手。请用简洁的中文总结以下笔记的核心内容，不超过200字。", text);
+    }
+
+    @Override
+    public String outline(Long userId, Long noteId, String content) {
+        String text = resolveContent(userId, noteId, content);
+        if (text == null || text.isBlank()) {
+            throw new BusinessException("笔记内容为空，无法生成大纲");
+        }
+        return callAssistant(userId, "你是一个笔记助手。请从以下笔记内容中提取结构化大纲，使用Markdown格式。", text);
+    }
+
+    @Override
+    public String continueWrite(Long userId, String content) {
+        if (content == null || content.isBlank()) {
+            throw new BusinessException("内容为空，无法续写");
+        }
+        return callAssistant(userId, "你是一个写作助手。请根据以下笔记内容，自然地续写200字左右。不要重复已有内容。", content);
+    }
+
+    @Override
+    public String translate(Long userId, String content, String targetLang) {
+        if (content == null || content.isBlank()) {
+            throw new BusinessException("内容为空，无法翻译");
+        }
+        String systemPrompt = "zh".equals(targetLang)
+                ? "你是一个翻译助手。请将以下英文翻译为中文，只输出翻译结果，不要添加解释。"
+                : "你是一个翻译助手。请将以下中文翻译为英文，只输出翻译结果，不要添加解释。";
+        return callAssistant(userId, systemPrompt, content);
+    }
+
+    @Override
+    public String polish(Long userId, String content) {
+        if (content == null || content.isBlank()) {
+            throw new BusinessException("内容为空，无法润色");
+        }
+        return callAssistant(userId, "你是一个文字编辑助手。请优化以下文字的表达，使其更流畅、更专业，保持原意不变。只输出润色后的文字，不要添加解释。", content);
+    }
+
+    /**
+     * 根据noteId或content获取笔记文本
+     */
+    private String resolveContent(Long userId, Long noteId, String content) {
+        if (content != null && !content.isBlank()) {
+            return content;
+        }
+        if (noteId != null) {
+            Note note = noteService.getNoteDetail(userId, noteId);
+            return note != null ? note.getContent() : null;
+        }
+        return null;
+    }
+
+    /**
+     * 通用AI辅助调用（使用用户配置的默认provider）
+     */
+    private String callAssistant(Long userId, String systemPrompt, String userContent) {
+        AIProvider provider = getProviderWithApiKey(userId, null);
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", systemPrompt));
+        messages.add(Map.of("role", "user", "content", userContent));
+        return provider.chat(provider.getDefaultModel(), messages);
+    }
+
 }

@@ -56,11 +56,25 @@
         </el-button>
       </div>
 
-      <div v-if="loading" class="loading-container">
-        <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+      <div v-if="loading" class="skeleton-list">
+        <SkeletonNoteCard v-for="i in 5" :key="i" />
       </div>
 
-      <el-empty v-else-if="recentNotes.length === 0" description="暂无笔记" />
+      <EmptyState
+        v-else-if="error"
+        :type="errorType"
+        :message="errorMsg"
+        @retry="loadNotes"
+      />
+
+      <EmptyState
+        v-else-if="recentNotes.length === 0"
+        description="还没有笔记，开始记录你的第一个想法吧！"
+        action-text="新建笔记"
+        action-icon="Plus"
+        secondary-text="查看模板"
+        @action="router.push('/notes/new')"
+      />
 
       <div v-else class="recent-notes-list">
         <el-card
@@ -95,6 +109,9 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
+import EmptyState from '@/components/common/EmptyState.vue';
+import ErrorState from '@/components/common/ErrorState.vue';
+import SkeletonNoteCard from '@/components/common/SkeletonNoteCard.vue';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
@@ -108,6 +125,9 @@ const noteStore = useNoteStore();
 
 const user = authStore.user;
 const loading = ref(false);
+const error = ref(false);
+const errorType = ref<'network' | 'permission' | 'data'>('network');
+const errorMsg = ref('');
 
 const totalNotes = computed(() => noteStore.notes.length);
 const favoriteCount = computed(() => noteStore.notes.filter(n => n.isFavorite).length);

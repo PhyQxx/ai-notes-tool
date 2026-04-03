@@ -19,6 +19,22 @@
       <div class="menu-section">
         <div
           class="menu-item"
+          :class="{ active: isActiveMenu('/notes/recent') }"
+          @click="router.push('/notes/recent')"
+        >
+          <el-icon><Clock /></el-icon>
+          <span v-if="!isCollapse">最近编辑</span>
+        </div>
+        <div
+          class="menu-item"
+          :class="{ active: isActiveMenu('/notes/favorites') }"
+          @click="router.push('/notes/favorites')"
+        >
+          <el-icon><Star /></el-icon>
+          <span v-if="!isCollapse">收藏</span>
+        </div>
+        <div
+          class="menu-item"
           :class="{ active: isActiveMenu('/spaces') || isActiveMenu('/spaces/') }"
           @click="router.push('/spaces')"
         >
@@ -96,7 +112,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessageBox } from 'element-plus';
-import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened } from '@element-plus/icons-vue';
+import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { useNotificationStore } from '@/stores/notification';

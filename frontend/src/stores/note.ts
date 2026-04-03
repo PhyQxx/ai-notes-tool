@@ -44,7 +44,7 @@ export const useNoteStore = defineStore('note', () => {
   const searchKeyword = ref('');
   const total = ref(0);
   const currentPage = ref(1);
-  const pageSize = ref(10);
+  const pageSize = ref(20);
 
   // Actions
   /**
@@ -54,15 +54,25 @@ export const useNoteStore = defineStore('note', () => {
     page?: number;
     size?: number;
     folderId?: number;
+    sortBy?: string;
+    isFavorite?: number;
+    append?: boolean;
   }): Promise<void> {
     loading.value = true;
     try {
       const result = await listNotes({
         page: params?.page || currentPage.value,
         size: params?.size || pageSize.value,
-        folderId: params?.folderId
+        folderId: params?.folderId,
+        sortBy: params?.sortBy,
+        isFavorite: params?.isFavorite
       });
-      notes.value = (result.records || []).map(normalizeNote);
+      const newNotes = (result.records || []).map(normalizeNote);
+      if (params?.append) {
+        notes.value = [...notes.value, ...newNotes];
+      } else {
+        notes.value = newNotes;
+      }
       total.value = result.total || 0;
       currentPage.value = result.current || result.page || 1;
     } catch (error) {

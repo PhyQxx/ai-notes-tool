@@ -211,4 +211,69 @@ public class AIController {
         return Result.success("上下文已清除", null);
     }
 
+    // ==================== AI 辅助写作接口 ====================
+
+    /**
+     * AI总结笔记
+     */
+    @PostMapping("/assistant/summarize")
+    @Operation(summary = "AI总结笔记")
+    public Result<Map<String, String>> summarize(@RequestBody Map<String, Object> body, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        Long noteId = body.get("noteId") != null ? Long.valueOf(body.get("noteId").toString()) : null;
+        String content = body.get("content") != null ? body.get("content").toString() : null;
+        String result = aiService.summarize(userId, noteId, content);
+        return Result.success(Map.of("data", result));
+    }
+
+    /**
+     * AI生成大纲
+     */
+    @PostMapping("/assistant/outline")
+    @Operation(summary = "AI生成大纲")
+    public Result<Map<String, String>> outline(@RequestBody Map<String, Object> body, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        Long noteId = body.get("noteId") != null ? Long.valueOf(body.get("noteId").toString()) : null;
+        String content = body.get("content") != null ? body.get("content").toString() : null;
+        String result = aiService.outline(userId, noteId, content);
+        return Result.success(Map.of("data", result));
+    }
+
+    /**
+     * AI续写
+     */
+    @PostMapping("/assistant/continue")
+    @Operation(summary = "AI续写")
+    public Result<Map<String, String>> continueWrite(@RequestBody Map<String, Object> body, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        String content = body.get("content").toString();
+        String result = aiService.continueWrite(userId, content);
+        return Result.success(Map.of("data", result));
+    }
+
+    /**
+     * AI翻译
+     */
+    @PostMapping("/assistant/translate")
+    @Operation(summary = "AI翻译（中英互译）")
+    public Result<Map<String, String>> translate(@RequestBody Map<String, Object> body, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        String content = body.get("content").toString();
+        String targetLang = body.get("targetLang").toString();
+        String result = aiService.translate(userId, content, targetLang);
+        return Result.success(Map.of("data", result));
+    }
+
+    /**
+     * AI润色
+     */
+    @PostMapping("/assistant/polish")
+    @Operation(summary = "AI润色")
+    public Result<Map<String, String>> polish(@RequestBody Map<String, Object> body, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        String content = body.get("content").toString();
+        String result = aiService.polish(userId, content);
+        return Result.success(Map.of("data", result));
+    }
+
 }

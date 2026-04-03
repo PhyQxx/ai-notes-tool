@@ -117,4 +117,29 @@ public interface AIService {
      */
     void clearConversationMessages(Long userId, Long conversationId);
 
+    /**
+     * AI总结笔记
+     */
+    String summarize(Long userId, Long noteId, String content);
+
+    /**
+     * AI生成大纲
+     */
+    String outline(Long userId, Long noteId, String content);
+
+    /**
+     * AI续写
+     */
+    String continueWrite(Long userId, String content);
+
+    /**
+     * AI翻译
+     */
+    String translate(Long userId, String content, String targetLang);
+
+    /**
+     * AI润色
+     */
+    String polish(Long userId, String content);
+
 }

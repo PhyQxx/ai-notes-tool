@@ -126,8 +126,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useNoteStore } from '@/stores/note';
+import { useShortcuts } from '@/composables/useShortcuts';
 import MarkdownEditor from '@/components/editor/MarkdownEditor.vue';
 import RichTextEditor from '@/components/editor/RichTextEditor.vue';
 import AIAssistant from '@/components/ai/AIAssistant.vue';
@@ -159,6 +160,72 @@ const showVersionPanel = ref(false);
 const showCommentPanel = ref(false);
 const commentCount = ref(0);
 const editorMode = ref<'markdown' | 'richtext'>('markdown');
+
+// ===== 自动保存草稿（localStorage）=====
+let autoSaveTimer: ReturnType<typeof setInterval> | null = null;
+const lastSavedDraftContent = ref('');
+
+function getDraftKey(id: number | string) {
+  return `note-draft-${id}`;
+}
+
+function startAutoSaveDraft() {
+  stopAutoSaveDraft();
+  autoSaveTimer = setInterval(() => {
+    const current = noteContent.value;
+    if (current && current !== lastSavedDraftContent.value) {
+      const key = getDraftKey(noteId.value || 'new');
+      localStorage.setItem(key, current);
+      localStorage.setItem(key + '-time', new Date().toISOString());
+      lastSavedDraftContent.value = current;
+    }
+  }, 5000);
+}
+
+function stopAutoSaveDraft() {
+  if (autoSaveTimer) {
+    clearInterval(autoSaveTimer);
+    autoSaveTimer = null;
+  }
+}
+
+function clearDraft() {
+  const key = getDraftKey(noteId.value || 'new');
+  localStorage.removeItem(key);
+  localStorage.removeItem(key + '-time');
+}
+
+async function checkDraftRecovery() {
+  const key = getDraftKey(noteId.value || 'new');
+  const draft = localStorage.getItem(key);
+  if (!draft || draft.length === 0) return;
+  // 仅在服务端内容为空或草稿比服务端内容新时提示
+  if (noteContent.value && noteContent.value === draft) return;
+  try {
+    await ElMessageBox.confirm(
+      '检测到未保存的草稿，是否恢复？',
+      '草稿恢复',
+      {
+        confirmButtonText: '恢复',
+        cancelButtonText: '丢弃',
+        type: 'info',
+        distinguishCancelAndClose: true,
+      }
+    );
+    noteContent.value = draft;
+    lastSavedDraftContent.value = draft;
+  } catch {
+    clearDraft();
+  }
+}
+
+// 注册全局快捷键
+useShortcuts();
+
+// 监听 Ctrl+S 事件
+function onNoteSave() {
+  handleSave();
+}
 
 // 防抖自动保存
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -213,6 +280,7 @@ const handleToggleTop = async () => {
 const handleSave = async () => {
   try {
     await saveNote();
+    clearDraft();
     showSaveStatus('success', '保存成功');
   } catch (error) {
     console.error('保存失败:', error);
@@ -302,6 +370,9 @@ wsClient.on('content_change', handleContentChange);
 
 // 加载笔记数据
 onMounted(async () => {
+  // 注册 Ctrl+S 监听
+  window.addEventListener('note:save', onNoteSave);
+
   if (noteId.value && noteId.value !== 0) {
     try {
       await noteStore.fetchNote(noteId.value);
@@ -310,25 +381,31 @@ onMounted(async () => {
         noteContent.value = currentNote.value.content;
         noteTags.value = currentNote.value.tags || [];
         editorMode.value = (currentNote.value.contentType as 'markdown' | 'richtext') || 'markdown';
+        lastSavedDraftContent.value = noteContent.value;
       }
     } catch (error) {
       console.error('加载笔记失败:', error);
       ElMessage.error('加载笔记失败');
     }
+    // 检查草稿恢复
+    await checkDraftRecovery();
     // 加入 WebSocket 笔记协作房间
-    if (noteId.value && noteId.value !== 0) {
-      wsClient.joinNote(noteId.value);
-    }
+    wsClient.joinNote(noteId.value);
   } else {
-    // 新建笔记，默认使用Markdown模式
+    // 新建笔记
     editorMode.value = 'markdown';
+    await checkDraftRecovery();
   }
+  // 启动草稿自动保存
+  startAutoSaveDraft();
 });
 
 onBeforeUnmount(() => {
   if (saveTimer) {
     clearTimeout(saveTimer);
   }
+  stopAutoSaveDraft();
+  window.removeEventListener('note:save', onNoteSave);
   if (noteId.value && noteId.value !== 0) {
     wsClient.leaveNote(noteId.value);
   }

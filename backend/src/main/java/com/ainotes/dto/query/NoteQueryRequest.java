@@ -74,6 +74,6 @@ public class NoteQueryRequest {
     /**
      * 每页大小
      */
-    private Integer size = 10;
+    private Integer size = 20;
 
 }
