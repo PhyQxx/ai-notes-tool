@@ -28,7 +28,7 @@ public class NoteLinkController {
 
     @GetMapping("/search-titles")
     @Operation(summary = "搜索笔记标题")
-    public Result<List<Note>> searchTitles(@RequestParam String keyword, Authentication authentication) {
+    public Result<List<Note>> searchTitles(@RequestParam(value = "keyword", required = false, defaultValue = "") String keyword, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         return Result.success(noteLinkService.searchTitles(userId, keyword));
     }

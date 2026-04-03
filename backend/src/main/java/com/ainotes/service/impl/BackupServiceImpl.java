@@ -61,16 +61,16 @@ public class BackupServiceImpl implements BackupService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("version", "1.0");
         data.put("exportTime", new Date());
-        data.put("notes", noteMapper.selectList(null));
-        data.put("folders", folderMapper.selectList(null));
-        data.put("spaces", spaceMapper.selectList(null));
-        data.put("spaceMembers", spaceMemberMapper.selectList(null));
-        data.put("comments", commentMapper.selectList(null));
-        data.put("attachments", attachmentMapper.selectList(null));
-        data.put("noteVersions", noteVersionMapper.selectList(null));
-        data.put("aiConversations", aiConversationMapper.selectList(null));
-        data.put("aiChatMessages", aiChatMessageMapper.selectList(null));
-        data.put("notifications", notificationMapper.selectList(null));
+        try { data.put("notes", noteMapper.selectList(null)); } catch (Exception e) { log.warn("导出notes失败", e); data.put("notes", List.of()); }
+        try { data.put("folders", folderMapper.selectList(null)); } catch (Exception e) { log.warn("导出folders失败", e); data.put("folders", List.of()); }
+        try { data.put("spaces", spaceMapper.selectList(null)); } catch (Exception e) { log.warn("导出spaces失败", e); data.put("spaces", List.of()); }
+        try { data.put("spaceMembers", spaceMemberMapper.selectList(null)); } catch (Exception e) { log.warn("导出spaceMembers失败", e); data.put("spaceMembers", List.of()); }
+        try { data.put("comments", commentMapper.selectList(null)); } catch (Exception e) { log.warn("导出comments失败", e); data.put("comments", List.of()); }
+        try { data.put("attachments", attachmentMapper.selectList(null)); } catch (Exception e) { log.warn("导出attachments失败", e); data.put("attachments", List.of()); }
+        try { data.put("noteVersions", noteVersionMapper.selectList(null)); } catch (Exception e) { log.warn("导出noteVersions失败", e); data.put("noteVersions", List.of()); }
+        try { data.put("aiConversations", aiConversationMapper.selectList(null)); } catch (Exception e) { log.warn("导出aiConversations失败", e); data.put("aiConversations", List.of()); }
+        try { data.put("aiChatMessages", aiChatMessageMapper.selectList(null)); } catch (Exception e) { log.warn("导出aiChatMessages失败", e); data.put("aiChatMessages", List.of()); }
+        try { data.put("notifications", notificationMapper.selectList(null)); } catch (Exception e) { log.warn("导出notifications失败", e); data.put("notifications", List.of()); }
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(writer, data);
     }
 
@@ -126,5 +126,13 @@ public class BackupServiceImpl implements BackupService {
         info.put("noteVersions", noteVersionMapper.selectCount(null));
         info.put("aiConversations", aiConversationMapper.selectCount(null));
         return info;
+    }
+
+    @Override
+    public List<Map<String, Object>> listBackups() {
+        // 返回备份概览作为列表（当前为单次全量备份模式）
+        List<Map<String, Object>> list = new ArrayList<>();
+        list.add(getBackupInfo());
+        return list;
     }
 }

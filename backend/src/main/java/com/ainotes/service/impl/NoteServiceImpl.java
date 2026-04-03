@@ -740,6 +740,25 @@ public class NoteServiceImpl implements NoteService {
     }
 
     @Override
+    public List<Note> recentNotes(Long userId, Integer limit) {
+        if (limit == null || limit <= 0) limit = 10;
+        if (limit > 50) limit = 50;
+        LambdaQueryWrapper<Note> qw = new LambdaQueryWrapper<>();
+        qw.eq(Note::getUserId, userId).eq(Note::getStatus, 1);
+        qw.orderByDesc(Note::getUpdatedAt).last("LIMIT " + limit);
+        return noteMapper.selectList(qw);
+    }
+
+    @Override
+    public IPage<Note> favoriteNotes(Long userId, Integer page, Integer size) {
+        Page<Note> p = new Page<>(page, size);
+        LambdaQueryWrapper<Note> qw = new LambdaQueryWrapper<>();
+        qw.eq(Note::getUserId, userId).eq(Note::getStatus, 1).eq(Note::getIsFavorite, 1);
+        qw.orderByDesc(Note::getUpdatedAt);
+        return noteMapper.selectPage(p, qw);
+    }
+
+    @Override
     public List<Note> recommendNotes(Long userId, Long noteId, Integer limit) {
         if (limit == null || limit <= 0) limit = 5;
         if (limit > 20) limit = 20;

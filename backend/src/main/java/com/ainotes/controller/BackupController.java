@@ -54,6 +54,20 @@ public class BackupController {
     }
 
     /**
+     * 获取备份列表（兼容前端调用）
+     */
+    @GetMapping("/list")
+    public Result<List<Map<String, Object>>> listBackups() {
+        try {
+            List<Map<String, Object>> list = backupService.listBackups();
+            return Result.success(list);
+        } catch (Exception e) {
+            log.error("获取备份列表失败", e);
+            return Result.error("获取备份列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 获取备份概览信息
      */
     @GetMapping("/info")

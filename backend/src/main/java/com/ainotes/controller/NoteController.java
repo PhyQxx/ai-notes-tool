@@ -70,7 +70,7 @@ public class NoteController {
      * @param id 笔记ID
      * @return 笔记详情
      */
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @Operation(summary = "获取笔记详情")
     public Result<Note> getNoteDetail(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
@@ -85,7 +85,7 @@ public class NoteController {
      * @param request 更新请求
      * @return 成功信息
      */
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @Operation(summary = "更新笔记")
     public Result<Void> updateNote(@PathVariable Long id, @Valid @RequestBody UpdateNoteRequest request, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
@@ -99,7 +99,7 @@ public class NoteController {
      * @param id 笔记ID
      * @return 成功信息
      */
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @Operation(summary = "删除笔记")
     public Result<Void> deleteNote(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
@@ -195,6 +195,33 @@ public class NoteController {
         Long userId = (Long) authentication.getPrincipal();
         noteService.emptyTrash(userId);
         return Result.success("回收站已清空", null);
+    }
+
+    /**
+     * 获取最近编辑的笔记
+     */
+    @GetMapping("/recent")
+    @Operation(summary = "获取最近编辑的笔记")
+    public Result<List<Note>> recentNotes(
+            @RequestParam(defaultValue = "10") Integer limit,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        List<Note> notes = noteService.recentNotes(userId, limit);
+        return Result.success(notes);
+    }
+
+    /**
+     * 获取收藏的笔记
+     */
+    @GetMapping("/favorites")
+    @Operation(summary = "获取收藏的笔记")
+    public Result<IPage<Note>> favoriteNotes(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer size,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        IPage<Note> result = noteService.favoriteNotes(userId, page, size);
+        return Result.success(result);
     }
 
     @GetMapping("/recommend")

@@ -109,6 +109,16 @@ public interface NoteService {
     void emptyTrash(Long userId);
 
     /**
+     * 获取最近编辑的笔记
+     */
+    List<Note> recentNotes(Long userId, Integer limit);
+
+    /**
+     * 获取收藏的笔记（分页）
+     */
+    IPage<Note> favoriteNotes(Long userId, Integer page, Integer size);
+
+    /**
      * 获取推荐笔记（基于标签相似度）
      */
     List<Note> recommendNotes(Long userId, Long noteId, Integer limit);

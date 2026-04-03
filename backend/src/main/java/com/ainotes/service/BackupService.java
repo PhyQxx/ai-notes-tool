@@ -26,4 +26,9 @@ public interface BackupService {
      * 获取备份概览信息
      */
     Map<String, Object> getBackupInfo();
+
+    /**
+     * 获取备份列表
+     */
+    java.util.List<java.util.Map<String, Object>> listBackups();
 }
