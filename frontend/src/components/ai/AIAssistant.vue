@@ -43,6 +43,18 @@
             v-model:provider="aiStore.config.provider"
             v-model:model="aiStore.config.model"
           />
+          <!-- 上下文信息 + 清除按钮 -->
+          <div v-if="aiStore.contextInfo && aiStore.currentConversation" class="context-info-bar">
+            <span class="context-stat">
+              📊 {{ aiStore.contextInfo.usedRounds }}/{{ aiStore.contextInfo.maxRounds }} 轮对话
+              · {{ aiStore.contextInfo.totalTokens.toLocaleString() }} tokens
+            </span>
+            <el-popconfirm title="确定清除上下文？AI将不再记住之前的对话内容" @confirm="handleClearContext">
+              <template #reference>
+                <el-button size="small" type="warning" plain :disabled="aiStore.isStreaming">🗑 清除上下文</el-button>
+              </template>
+            </el-popconfirm>
+          </div>
         </div>
 
         <!-- 快捷操作按钮 -->
@@ -244,6 +256,16 @@ const handleStopGeneration = () => {
   aiStore.streamMessage = '';
 };
 
+const handleClearContext = async () => {
+  if (!aiStore.currentConversation?.id) return;
+  try {
+    await aiStore.clearContext(aiStore.currentConversation.id);
+    ElMessage.success('上下文已清除');
+  } catch {
+    ElMessage.error('清除失败');
+  }
+};
+
 const handleQuickAction = async (type: string) => {
   if (!noteStore.currentNote) {
     ElMessage.warning('请先选择笔记');
@@ -388,6 +410,18 @@ if (typeof document !== 'undefined') {
   min-width: 0;
 
   .provider-section { margin-bottom: 8px; }
+
+  .context-info-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--el-fill-color-light);
+    border-radius: 6px;
+    font-size: 12px;
+    .context-stat { color: var(--el-text-color-secondary); }
+  }
 
   .quick-actions {
     display: flex;
