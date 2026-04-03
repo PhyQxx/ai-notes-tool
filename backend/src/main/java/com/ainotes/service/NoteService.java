@@ -66,6 +66,7 @@ public interface NoteService {
      * @return 笔记列表
      */
     IPage<Note> searchNotes(Long userId, String keyword);
+    IPage<SearchResultDTO> fullTextSearch(Long userId, String keyword, String scope);
 
     /**
      * 收藏/取消收藏

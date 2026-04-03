@@ -75,16 +75,29 @@ const initEditor = () => {
     toolbar: [
       'headings', 'bold', 'italic', 'strike', '|',
       'line', 'quote', 'list', 'ordered-list', 'check', '|',
-      'code', 'inline-code', '|',
-      'link', 'table', '|',
-      'upload', '|',
+      'code', 'inline-code', 'table', '|',
+      'link', 'upload', '|',
       'undo', 'redo', '|',
-      'preview', 'fullscreen', 'export'
+      'edit-mode', 'outline', 'preview', 'fullscreen', 'export'
     ],
     toolbarConfig: {
       pin: true
     },
     placeholder: '开始编写您的笔记...',
+    preview: {
+      markdown: {
+        mathBlockMarker: '$$',
+        toc: true,
+        footnotes: true,
+      },
+      highlight: {
+        style: 'github',
+        lineNumber: true,
+      },
+      mermaid: {
+        theme: 'default',
+      },
+    },
     after: () => {
       if (vditor) {
         vditor.setValue(props.modelValue);

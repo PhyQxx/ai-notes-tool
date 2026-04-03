@@ -33,6 +33,13 @@ jwt:
   secret: ai-notes-dev-secret-key-2024-at-least-32chars
   expiration: 7200000  # 2小时
 
+# AI Configuration
+ai:
+  deepseek:
+    api-key: sk-58f8f19b91254af0af7d2bef410b432b
+  glm:
+    api-key: 7453121cc2804e4387f04eb58aafa285.8e5KyMdOR2My8ueD
+
 # Logging Development Configuration
 logging:
   level:
