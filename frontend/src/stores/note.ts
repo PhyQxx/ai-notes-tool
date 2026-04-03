@@ -23,6 +23,17 @@ import {
 } from '../api';
 import type { Note, Folder, NoteVersion } from '../types';
 
+// Normalize backend note data to frontend format
+function normalizeNote(raw: any): Note {
+  return {
+    ...raw,
+    isFavorite: !!raw.isFavorite,
+    isTop: !!raw.isTop,
+    tags: raw.tags || [],
+    folderId: raw.folderId || 0,
+  };
+}
+
 export const useNoteStore = defineStore('note', () => {
   // 状态
   const notes = ref<Note[]>([]);
@@ -51,9 +62,9 @@ export const useNoteStore = defineStore('note', () => {
         size: params?.size || pageSize.value,
         folderId: params?.folderId
       });
-      notes.value = result.records;
-      total.value = result.total;
-      currentPage.value = result.page;
+      notes.value = (result.records || []).map(normalizeNote);
+      total.value = result.total || 0;
+      currentPage.value = result.current || result.page || 1;
     } catch (error) {
       console.error('获取笔记列表失败:', error);
       throw error;
@@ -69,7 +80,7 @@ export const useNoteStore = defineStore('note', () => {
     loading.value = true;
     try {
       const note = await getNoteApi(id);
-      currentNote.value = note;
+      currentNote.value = normalizeNote(note);
     } catch (error) {
       console.error('获取笔记详情失败:', error);
       throw error;
@@ -89,7 +100,20 @@ export const useNoteStore = defineStore('note', () => {
   }): Promise<Note> {
     loading.value = true;
     try {
-      const note = await createNoteApi(data);
+      const id = await createNoteApi(data);
+      const note: Note = {
+        id: id as any,
+        title: data.title || '无标题',
+        content: data.content,
+        contentType: data.contentType,
+        folderId: data.folderId || 0,
+        tags: [],
+        isFavorite: false,
+        isTop: false,
+        viewCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
       notes.value.unshift(note);
       return note;
     } catch (error) {
@@ -154,9 +178,9 @@ export const useNoteStore = defineStore('note', () => {
         page: 1,
         size: pageSize.value
       });
-      notes.value = result.records;
-      total.value = result.total;
-      currentPage.value = 1;
+      notes.value = (result.records || []).map(normalizeNote);
+      total.value = result.total || 0;
+      currentPage.value = result.current || result.page || 1;
     } catch (error) {
       console.error('搜索笔记失败:', error);
       throw error;

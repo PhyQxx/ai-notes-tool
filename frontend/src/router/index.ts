@@ -56,6 +56,11 @@ const routes: RouteRecordRaw[] = [
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/SettingsView.vue')
+      },
+      {
+        path: 'notifications',
+        name: 'Notifications',
+        component: () => import('@/views/NotificationView.vue')
       }
     ]
   },
@@ -97,3 +102,8 @@ router.beforeEach((to, _from, next) => {
 });
 
 export default router;
+
+// 统一页面标题
+router.afterEach(() => {
+  document.title = 'AI Notes - 智能笔记工具';
+});

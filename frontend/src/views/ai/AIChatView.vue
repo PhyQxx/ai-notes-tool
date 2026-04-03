@@ -283,7 +283,10 @@ const scrollToBottom = () => {
 };
 
 const formatTime = (dateStr: string) => {
-  const date = new Date(dateStr);
+  if (!dateStr) return '';
+  // Handle MySQL datetime format "2026-04-03 08:10:32" and ISO format
+  const date = new Date(dateStr.replace(' ', 'T'));
+  if (isNaN(date.getTime())) return '';
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const minutes = Math.floor(diff / 60000);

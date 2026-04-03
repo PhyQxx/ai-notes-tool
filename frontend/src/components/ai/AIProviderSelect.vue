@@ -20,7 +20,7 @@
       <el-option
         v-for="model in currentModels"
         :key="model"
-        :label="model"
+        :label="getModelDisplayName(model)"
         :value="model"
       />
     </el-select>
@@ -43,6 +43,22 @@ const emit = defineEmits<{
 }>();
 
 const aiStore = useAIStore();
+
+// 模型名称映射
+const MODEL_DISPLAY_NAMES: Record<string, string> = {
+  'deepseek-chat': 'DeepSeek Chat',
+  'deepseek-coder': 'DeepSeek Coder',
+  'deepseek-reasoner': 'DeepSeek R1',
+  'glm-4': 'GLM-4',
+  'glm-4-flash': 'GLM-4 Flash',
+  'glm-3-turbo': 'GLM-3 Turbo',
+  'gpt-4': 'GPT-4',
+  'gpt-3.5-turbo': 'GPT-3.5',
+};
+
+const getModelDisplayName = (model: string): string => {
+  return MODEL_DISPLAY_NAMES[model] || model;
+};
 
 const providers = ref<AIProviderInfo[]>([
   {

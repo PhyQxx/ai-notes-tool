@@ -149,7 +149,11 @@ const handleRegister = async () => {
       ElMessage.success('注册成功');
       router.push('/');
     } catch (error: any) {
-      ElMessage.error(error.message || '注册失败');
+      // Response interceptor already shows toast for API errors;
+      // only show fallback for unexpected errors
+      if (!error.response) {
+        ElMessage.error('网络错误，请稍后重试');
+      }
     } finally {
       loading.value = false;
     }

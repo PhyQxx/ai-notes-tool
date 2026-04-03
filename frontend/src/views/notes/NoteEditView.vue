@@ -51,6 +51,7 @@
     </div>
 
     <div class="editor-toolbar">
+      <CollabIndicator />
       <el-tag
         v-for="tag in noteTags"
         :key="tag"
@@ -77,8 +78,8 @@
     <div class="editor-container">
       <div class="editor-mode-switch">
         <el-radio-group v-model="editorMode" @change="handleEditorModeChange">
-          <el-radio-button value="markdown">Markdown</el-radio-button>
-          <el-radio-button value="richtext">富文本</el-radio-button>
+          <el-radio-button label="markdown">Markdown</el-radio-button>
+          <el-radio-button label="richtext">富文本</el-radio-button>
         </el-radio-group>
       </div>
 
@@ -133,6 +134,8 @@ import AIAssistant from '@/components/ai/AIAssistant.vue';
 import VersionPanel from '@/components/editor/VersionPanel.vue';
 import ExportMenu from '@/components/editor/ExportMenu.vue';
 import CommentPanel from '@/components/note/CommentPanel.vue';
+import CollabIndicator from '@/components/editor/CollabIndicator.vue';
+import wsClient, { type WSMessage } from '@/utils/websocket';
 import type { NoteVersion } from '@/types';
 
 const route = useRoute();
@@ -262,9 +265,11 @@ const handleInsertContent = (content: string) => {
 };
 
 const handleEditorModeChange = async (mode: 'markdown' | 'richtext') => {
+  // Just switch mode, auto-save will handle content preservation
   try {
-    await saveNote();
-    showSaveStatus('success', '模式切换成功');
+    if (noteId.value) {
+      await saveNote();
+    }
   } catch (error) {
     console.error('切换编辑器模式失败:', error);
   }
@@ -281,6 +286,20 @@ watch([noteTitle, noteContent, noteTags], () => {
   handleAutoSave();
 }, { deep: true });
 
+// WebSocket 实时协作
+let contentChangeTimer: ReturnType<typeof setTimeout> | null = null;
+
+const handleContentChange = (msg: WSMessage) => {
+  if (msg.noteId !== noteId.value) return;
+  // 最后写入胜出策略：如果当前用户没有在编辑，则更新内容
+  if (msg.data?.content && msg.userId) {
+    noteContent.value = msg.data.content;
+    showSaveStatus('success', '其他用户更新了内容');
+  }
+};
+
+wsClient.on('content_change', handleContentChange);
+
 // 加载笔记数据
 onMounted(async () => {
   if (noteId.value && noteId.value !== 0) {
@@ -296,6 +315,10 @@ onMounted(async () => {
       console.error('加载笔记失败:', error);
       ElMessage.error('加载笔记失败');
     }
+    // 加入 WebSocket 笔记协作房间
+    if (noteId.value && noteId.value !== 0) {
+      wsClient.joinNote(noteId.value);
+    }
   } else {
     // 新建笔记，默认使用Markdown模式
     editorMode.value = 'markdown';
@@ -306,6 +329,10 @@ onBeforeUnmount(() => {
   if (saveTimer) {
     clearTimeout(saveTimer);
   }
+  if (noteId.value && noteId.value !== 0) {
+    wsClient.leaveNote(noteId.value);
+  }
+  wsClient.off('content_change', handleContentChange);
 });
 </script>
 

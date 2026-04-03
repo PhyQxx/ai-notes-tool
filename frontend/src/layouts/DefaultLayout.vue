@@ -61,6 +61,7 @@
         </div>
 
         <div class="header-right">
+          <NotificationBell />
           <el-dropdown trigger="click">
             <div class="user-info">
               <el-avatar :size="32" :src="user?.avatar || defaultAvatar">
@@ -98,7 +99,11 @@ import { ElMessageBox } from 'element-plus';
 import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
+import { useNotificationStore } from '@/stores/notification';
+import { getToken } from '@/utils/storage';
+import wsClient from '@/utils/websocket';
 import FolderTree from '@/components/common/FolderTree.vue';
+import NotificationBell from '@/components/common/NotificationBell.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -152,6 +157,15 @@ onMounted(async () => {
   await authStore.initAuth();
   // 加载文件夹树
   await noteStore.fetchFolders();
+  // 初始化 WebSocket
+  const token = getToken();
+  if (token) {
+    wsClient.connect(token);
+  }
+  // 初始化通知
+  const notificationStore = useNotificationStore();
+  notificationStore.initWSListener();
+  notificationStore.fetchUnreadCount();
 });
 </script>
 

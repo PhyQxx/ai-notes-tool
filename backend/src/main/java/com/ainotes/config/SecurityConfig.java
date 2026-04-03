@@ -42,6 +42,8 @@ public class SecurityConfig {
                         .requestMatchers("/doc.html", "/swagger-resources/**", "/webjars/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         // 放行静态资源
                         .requestMatchers("/static/**", "/uploads/**").permitAll()
+                        // 放行WebSocket
+                        .requestMatchers("/ws/**").permitAll()
                         // 放行CORS预检
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // 其他请求需要认证
