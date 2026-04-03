@@ -1,34 +1,119 @@
 /**
- * CSS变量 - Element Plus主题色
+ * 设计令牌系统 - Design Tokens
+ * 品牌色 + 语义色 + 暗色模式全覆盖
  */
 
 :root {
-  // 主题色
-  --el-color-primary: #409eff;
-  --el-color-success: #67c23a;
-  --el-color-warning: #e6a23c;
-  --el-color-danger: #f56c6c;
+  // ===== 1. 品牌色系统 =====
+  --brand-primary: #5B7FFF;
+  --brand-primary-light-1: #7994FF;
+  --brand-primary-light-2: #96AAFF;
+  --brand-primary-light-3: #B3C1FF;
+  --brand-primary-light-4: #D0D8FF;
+  --brand-primary-light-5: #E8ECFF;
+  --brand-primary-light-6: #F0F3FF;
+  --brand-primary-light-7: #F5F7FF;
+  --brand-primary-light-8: #FAFAFF;
+  --brand-primary-light-9: #FDFDFF;
+  --brand-primary-dark-1: #4A6BEE;
+  --brand-primary-dark-2: #3A57DD;
+  --brand-primary-bg: #F0F3FF;
+  --brand-primary-border: #D0D8FF;
+
+  // ===== 2. 辅助色 =====
+  --color-success: #52c41a;
+  --color-success-light: #f6ffed;
+  --color-success-lighter: #d9f7be;
+  --color-success-bg: #f6ffed;
+  --color-success-border: #b7eb8f;
+
+  --color-warning: #faad14;
+  --color-warning-light: #fffbe6;
+  --color-warning-lighter: #fff1b8;
+  --color-warning-bg: #fffbe6;
+  --color-warning-border: #ffe58f;
+
+  --color-danger: #ff4d4f;
+  --color-danger-light: #fff2f0;
+  --color-danger-lighter: #ffccc7;
+  --color-danger-bg: #fff2f0;
+  --color-danger-border: #ffa39e;
+
+  --color-info: #5B7FFF;
+  --color-info-light: #F0F3FF;
+  --color-info-lighter: #D0D8FF;
+  --color-info-bg: #F0F3FF;
+  --color-info-border: #B3C1FF;
+
+  // ===== 3. 中性色 =====
+  --gray-50: #FAFAFA;
+  --gray-100: #F5F5F5;
+  --gray-200: #EEEEEE;
+  --gray-300: #E0E0E0;
+  --gray-400: #BDBDBD;
+  --gray-500: #9E9E9E;
+  --gray-600: #757575;
+  --gray-700: #616161;
+  --gray-800: #424242;
+  --gray-900: #212121;
+
+  // ===== 4. 语义色 =====
+  --text-primary: #1D2129;
+  --text-regular: #4E5969;
+  --text-secondary: #86909C;
+  --text-placeholder: #C9CDD4;
+  --text-disabled: #C9CDD4;
+
+  --bg-page: #F2F3F5;
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --bg-header: #FFFFFF;
+  --bg-hover: #F2F3F5;
+  --bg-active: #E8F3FF;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+
+  // ===== 5. Element Plus 变量覆盖 =====
+  --el-color-primary: var(--brand-primary);
+  --el-color-primary-light-1: var(--brand-primary-light-1);
+  --el-color-primary-light-2: var(--brand-primary-light-2);
+  --el-color-primary-light-3: var(--brand-primary-light-3);
+  --el-color-primary-light-4: var(--brand-primary-light-4);
+  --el-color-primary-light-5: var(--brand-primary-light-5);
+  --el-color-primary-light-6: var(--brand-primary-light-6);
+  --el-color-primary-light-7: var(--brand-primary-light-7);
+  --el-color-primary-light-8: var(--brand-primary-light-8);
+  --el-color-primary-light-9: var(--brand-primary-light-9);
+  --el-color-primary-dark-2: var(--brand-primary-dark-2);
+  --el-color-success: var(--color-success);
+  --el-color-warning: var(--color-warning);
+  --el-color-danger: var(--color-danger);
   --el-color-info: #909399;
 
-  // 文字颜色
-  --el-text-color-primary: #303133;
-  --el-text-color-regular: #606266;
-  --el-text-color-secondary: #909399;
-  --el-text-color-placeholder: #c0c4cc;
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-regular);
+  --el-text-color-secondary: var(--text-secondary);
+  --el-text-color-placeholder: var(--text-placeholder);
+  --el-text-color-disabled: var(--text-disabled);
 
-  // 边框颜色
-  --el-border-color: #dcdfe6;
-  --el-border-color-light: #e4e7ed;
-  --el-border-color-lighter: #ebeef5;
-  --el-border-color-extra-light: #f2f6fc;
-  --el-border-color-dark: #d4d7de;
-  --el-border-color-darker: #cdd0d6;
+  --el-bg-color: var(--bg-card);
+  --el-bg-color-page: var(--bg-page);
+  --el-bg-color-overlay: var(--bg-card);
 
-  // 背景色
-  --el-bg-color: #ffffff;
-  --el-bg-color-page: #f5f7fa;
+  --el-border-color: var(--gray-300);
+  --el-border-color-light: var(--gray-200);
+  --el-border-color-lighter: var(--gray-100);
+  --el-border-color-extra-light: #F7F8FA;
+  --el-border-color-dark: var(--gray-400);
+  --el-border-color-darker: var(--gray-500);
 
-  // 字体大小
+  --el-fill-color: var(--gray-200);
+  --el-fill-color-light: var(--gray-100);
+  --el-fill-color-lighter: var(--gray-50);
+  --el-fill-color-extra-light: #FAFBFC;
+  --el-fill-color-dark: var(--gray-300);
+  --el-fill-color-darker: var(--gray-400);
+  --el-fill-color-blank: var(--bg-card);
+
   --el-font-size-extra-large: 20px;
   --el-font-size-large: 18px;
   --el-font-size-medium: 16px;
@@ -36,18 +121,178 @@
   --el-font-size-small: 13px;
   --el-font-size-extra-small: 12px;
 
-  // 圆角
-  --el-border-radius-base: 4px;
-  --el-border-radius-small: 2px;
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 4px;
   --el-border-radius-round: 20px;
   --el-border-radius-circle: 100%;
 
-  // 阴影
-  --el-box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  --el-box-shadow-base: 0 2px 4px -1px rgba(0, 0, 0, 0.12),
-    0 4px 5px 0 rgba(0, 0, 0, 0.04),
-    0 1px 10px 0 rgba(0, 0, 0, 0.04);
-  --el-box-shadow-dark: 0 2px 4px -1px rgba(0, 0, 0, 0.2),
-    0 4px 5px 0 rgba(0, 0, 0, 0.08),
-    0 1px 10px 0 rgba(0, 0, 0, 0.08);
+  // ===== 6. 字体层级 =====
+  --font-size-h1: 28px;
+  --font-size-h2: 24px;
+  --font-size-h3: 20px;
+  --font-size-h4: 18px;
+  --font-size-h5: 16px;
+  --font-size-body: 14px;
+  --font-size-caption: 12px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  // ===== 7. 间距系统 (4px grid) =====
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+
+  // ===== 8. 圆角规范 =====
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  // ===== 9. 阴影层级 =====
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+
+  --el-box-shadow-light: var(--shadow-sm);
+  --el-box-shadow: var(--shadow-md);
+  --el-box-shadow-base: var(--shadow-md);
+  --el-box-shadow-dark: var(--shadow-lg);
+
+  // ===== 10. 动效规范 =====
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+// ===== 暗色模式全覆盖 =====
+html.dark {
+  color-scheme: dark;
+
+  // 品牌色 - 暗色模式
+  --brand-primary: #7994FF;
+  --brand-primary-light-1: #6A85EE;
+  --brand-primary-light-2: #5B7FFF;
+  --brand-primary-light-3: #4C6FDD;
+  --brand-primary-light-4: #3D5FCC;
+  --brand-primary-light-5: #2E4FBB;
+  --brand-primary-light-6: #254199;
+  --brand-primary-light-7: #1C3377;
+  --brand-primary-light-8: #132655;
+  --brand-primary-light-9: #0A1933;
+  --brand-primary-dark-1: #8BA2FF;
+  --brand-primary-dark-2: #9DB0FF;
+  --brand-primary-bg: rgba(91, 127, 255, 0.1);
+  --brand-primary-border: rgba(91, 127, 255, 0.25);
+
+  // 辅助色 - 暗色模式
+  --color-success: #73d13d;
+  --color-success-light: #162312;
+  --color-success-lighter: #274016;
+  --color-success-bg: #162312;
+  --color-success-border: #389e0d;
+
+  --color-warning: #ffc53d;
+  --color-warning-light: #2b2111;
+  --color-warning-lighter: #594214;
+  --color-warning-bg: #2b2111;
+  --color-warning-border: #d48806;
+
+  --color-danger: #ff7875;
+  --color-danger-light: #2a1215;
+  --color-danger-lighter: #58181c;
+  --color-danger-bg: #2a1215;
+  --color-danger-border: #cf1322;
+
+  --color-info: #7994FF;
+  --color-info-light: rgba(91, 127, 255, 0.1);
+  --color-info-lighter: rgba(91, 127, 255, 0.25);
+  --color-info-bg: rgba(91, 127, 255, 0.1);
+  --color-info-border: rgba(91, 127, 255, 0.35);
+
+  // 中性色 - 暗色模式
+  --gray-50: #1D1D1D;
+  --gray-100: #262626;
+  --gray-200: #303030;
+  --gray-300: #434343;
+  --gray-400: #595959;
+  --gray-500: #737373;
+  --gray-600: #8C8C8C;
+  --gray-700: #A6A6A6;
+  --gray-800: #BFBFBF;
+  --gray-900: #D9D9D9;
+
+  // 语义色 - 暗色模式
+  --text-primary: #FFFFFFD9;
+  --text-regular: #FFFFFFA6;
+  --text-secondary: #FFFFFF73;
+  --text-placeholder: #FFFFFF40;
+  --text-disabled: #FFFFFF26;
+
+  --bg-page: #0E0E0E;
+  --bg-card: #1A1A1A;
+  --bg-sidebar: #141414;
+  --bg-header: #1A1A1A;
+  --bg-hover: #2A2A2A;
+  --bg-active: rgba(91, 127, 255, 0.15);
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+
+  // Element Plus 暗色覆盖
+  --el-color-white: #1A1A1A;
+  --el-bg-color: #1A1A1A;
+  --el-bg-color-overlay: #1D1D1D;
+  --el-bg-color-page: #0E0E0E;
+  --el-text-color-primary: #FFFFFFD9;
+  --el-text-color-regular: #FFFFFFA6;
+  --el-text-color-secondary: #FFFFFF73;
+  --el-text-color-placeholder: #FFFFFF40;
+  --el-text-color-disabled: #FFFFFF26;
+  --el-border-color: #434343;
+  --el-border-color-light: #303030;
+  --el-border-color-lighter: #262626;
+  --el-border-color-extra-light: #1D1D1D;
+  --el-border-color-dark: #595959;
+  --el-border-color-darker: #737373;
+  --el-fill-color: #262626;
+  --el-fill-color-light: #1D1D1D;
+  --el-fill-color-lighter: #171717;
+  --el-fill-color-extra-light: #141414;
+  --el-fill-color-dark: #303030;
+  --el-fill-color-darker: #434343;
+  --el-fill-color-blank: #1A1A1A;
+  --el-box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, .36), 0px 8px 20px rgba(0, 0, 0, .72);
+  --el-box-shadow-light: 0px 0px 12px rgba(0, 0, 0, .72);
+  --el-box-shadow-lighter: 0px 0px 6px rgba(0, 0, 0, .72);
+  --el-box-shadow-dark: 0px 16px 48px 16px rgba(0, 0, 0, .72), 0px 12px 32px rgba(0, 0, 0, .72), 0px 8px 16px -8px rgba(0, 0, 0, .72);
+  --el-mask-color: rgba(0, 0, 0, .8);
+  --el-mask-color-extra-light: rgba(0, 0, 0, .3);
+
+  // 阴影 - 暗色模式加深
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.35), 0 2px 4px -2px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.25);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.45), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
 }

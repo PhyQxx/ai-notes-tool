@@ -44,6 +44,61 @@ body,
   }
 }
 
+// ===== Element Plus 全局组件覆盖 =====
+
+// 统一圆角
+.el-card {
+  border-radius: var(--radius-lg) !important;
+}
+
+.el-button {
+  border-radius: var(--radius-md) !important;
+}
+
+.el-input .el-input__wrapper {
+  border-radius: var(--radius-md) !important;
+}
+
+.el-select .el-select__wrapper {
+  border-radius: var(--radius-md) !important;
+}
+
+.el-textarea .el-textarea__inner {
+  border-radius: var(--radius-md) !important;
+}
+
+.el-dialog {
+  border-radius: var(--radius-xl) !important;
+}
+
+.el-tag {
+  border-radius: var(--radius-sm) !important;
+}
+
+.el-message-box {
+  border-radius: var(--radius-lg) !important;
+}
+
+.el-popover.el-popper {
+  border-radius: var(--radius-md) !important;
+}
+
+.el-dropdown__popper.el-popper {
+  border-radius: var(--radius-md) !important;
+}
+
+// 统一过渡
+.el-button,
+.el-input .el-input__wrapper,
+.el-select .el-select__wrapper,
+.el-textarea .el-textarea__inner,
+.el-card,
+.el-tag,
+.el-dialog,
+.el-message-box {
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
 // 亮色/暗色主题切换
 html.dark {
   color-scheme: dark;

@@ -24,8 +24,31 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { getGraphData, type GraphNode, type GraphEdge } from '@/api/note';
+import { useThemeStore } from '@/stores/theme';
 
 const router = useRouter();
+const themeStore = useThemeStore();
+
+function getGraphColors() {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark
+    ? {
+        linkEdge: '#7994FF',
+        tagEdge: '#73d13d',
+        nodeFill: '#7994FF',
+        nodeStroke: '#2A2A2A',
+        text: '#FFFFFFD9',
+        background: '#141414',
+      }
+    : {
+        linkEdge: '#5B7FFF',
+        tagEdge: '#52c41a',
+        nodeFill: '#5B7FFF',
+        nodeStroke: '#ffffff',
+        text: '#1D2129',
+        background: '#ffffff',
+      };
+}
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const canvasContainer = ref<HTMLElement | null>(null);
 const loading = ref(false);
@@ -148,7 +171,11 @@ function draw() {
   canvas.style.height = h + 'px';
   const ctx = canvas.getContext('2d')!;
   ctx.scale(devicePixelRatio, devicePixelRatio);
-  ctx.clearRect(0, 0, w, h);
+  const colors = getGraphColors();
+
+  // Background
+  ctx.fillStyle = colors.background;
+  ctx.fillRect(0, 0, w, h);
 
   // Draw edges
   for (const edge of edges.value) {
@@ -158,7 +185,7 @@ function draw() {
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
-    ctx.strokeStyle = edge.type === 'link' ? '#409eff' : '#67c23a';
+    ctx.strokeStyle = edge.type === 'link' ? colors.linkEdge : colors.tagEdge;
     ctx.lineWidth = edge.type === 'link' ? 2 : 1.5;
     if (edge.type === 'tag') ctx.setLineDash([6, 4]);
     else ctx.setLineDash([]);
@@ -172,14 +199,14 @@ function draw() {
     // Circle
     ctx.beginPath();
     ctx.arc(nd.x, nd.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#409eff';
+    ctx.fillStyle = colors.nodeFill;
     ctx.fill();
-    ctx.strokeStyle = '#fff';
+    ctx.strokeStyle = colors.nodeStroke;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Title
-    ctx.fillStyle = '#303133';
+    ctx.fillStyle = colors.text;
     ctx.font = '13px sans-serif';
     ctx.textAlign = 'center';
     const title = nd.title.length > 8 ? nd.title.substring(0, 8) + '…' : nd.title;
@@ -232,10 +259,26 @@ function onClick(e: MouseEvent) {
 onMounted(() => {
   loadData();
   window.addEventListener('resize', () => draw());
+
+  // Watch theme changes to redraw canvas
+  const observer = new MutationObserver(() => {
+    if (nodes.value.length > 0) draw();
+  });
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class'],
+  });
+  themeObserver = observer;
 });
+
+let themeObserver: MutationObserver | null = null;
 
 onBeforeUnmount(() => {
   if (animFrame) cancelAnimationFrame(animFrame);
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
+  }
 });
 </script>
 
@@ -265,8 +308,8 @@ onBeforeUnmount(() => {
           width: 24px;
           height: 3px;
           border-radius: 2px;
-          &.link-line { background-color: #409eff; }
-          &.tag-line { background-color: #67c23a; border-top: 2px dashed #67c23a; height: 0; }
+          &.link-line { background-color: var(--brand-primary); }
+          &.tag-line { background-color: var(--color-success); border-top: 2px dashed var(--color-success); height: 0; }
         }
       }
     }
