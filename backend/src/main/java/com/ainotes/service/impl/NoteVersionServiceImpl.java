@@ -75,7 +75,7 @@ public class NoteVersionServiceImpl implements NoteVersionService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void autoSaveVersion(Long noteId) {
         // 查询笔记
         Note note = noteMapper.selectById(noteId);
