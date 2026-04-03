@@ -532,8 +532,8 @@ onMounted(async () => {
 
       .message {
         display: flex;
-        gap: 12px;
-        margin-bottom: 24px;
+        gap: var(--nt-spacing-md);
+        margin-bottom: var(--nt-spacing-lg);
 
         &:last-child {
           margin-bottom: 0;
@@ -587,8 +587,9 @@ onMounted(async () => {
 
           .message-content {
             .message-text {
-              background-color: var(--el-color-primary);
-              color: white;
+              background-color: var(--nt-primary);
+              color: #fff;
+              border-radius: var(--nt-radius-lg) var(--nt-radius-lg) var(--nt-radius-sm) var(--nt-radius-lg);
             }
           }
         }
@@ -596,13 +597,27 @@ onMounted(async () => {
         &.assistant {
           .message-content {
             .message-text {
-              background-color: var(--el-fill-color-light);
-              color: var(--el-text-color-primary);
+              background-color: var(--nt-bg-secondary);
+              color: var(--nt-text-primary);
+              border-radius: var(--nt-radius-lg) var(--nt-radius-lg) var(--nt-radius-lg) var(--nt-radius-sm);
+
+              :deep(pre) {
+                background-color: var(--nt-bg-tertiary);
+                border-radius: var(--nt-radius-md);
+                padding: 12px;
+                margin: 8px 0;
+                overflow-x: auto;
+              }
+
+              :deep(code) {
+                font-size: var(--nt-font-size-caption);
+                font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+              }
             }
 
             &.streaming {
               .message-text {
-                background-color: var(--el-fill-color);
+                background-color: var(--nt-bg-tertiary);
               }
             }
           }

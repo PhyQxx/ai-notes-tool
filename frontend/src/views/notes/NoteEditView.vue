@@ -536,8 +536,13 @@ const handleCreateShare = async () => {
 };
 
 const copyShareLink = (slug: string) => {
-  navigator.clipboard.writeText(`${shareBaseUrl}/${slug}`);
-  ElMessage.success('链接已复制');
+  const url = `${shareBaseUrl}/${slug}`;
+  navigator.clipboard.writeText(url);
+  ElMessage.success({
+    message: '链接已复制到剪贴板',
+    showClose: true,
+    duration: 2000,
+  });
 };
 
 const handleDeleteShare = async (shareId: number) => {

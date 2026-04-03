@@ -3,6 +3,9 @@
     <el-card class="login-card">
       <template #header>
         <div class="card-header">
+          <div class="logo-icon">
+            <el-icon :size="28"><EditPen /></el-icon>
+          </div>
           <h2>AI Notes</h2>
           <p>智能笔记工具</p>
         </div>
@@ -58,6 +61,7 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { EditPen } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
@@ -111,44 +115,96 @@ const handleLogin = async () => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--nt-primary) 0%, var(--nt-primary-dark) 100%);
+  position: relative;
+  overflow: hidden;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.15;
+    filter: blur(80px);
+    animation: float 8s ease-in-out infinite;
+  }
+
+  &::before {
+    width: 400px;
+    height: 400px;
+    background: var(--nt-primary-light);
+    top: -100px;
+    right: -100px;
+    animation-delay: 0s;
+  }
+
+  &::after {
+    width: 300px;
+    height: 300px;
+    background: var(--nt-primary-lighter);
+    bottom: -80px;
+    left: -80px;
+    animation-delay: -4s;
+  }
 
   .login-card {
     width: 400px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border-radius: var(--nt-radius-xl);
+    box-shadow: var(--nt-shadow-xl);
+    animation: cardEnter 0.6s ease-out;
+    position: relative;
+    z-index: 1;
+
+    :deep(.el-card__body) {
+      padding: 24px 32px 32px;
+    }
 
     .card-header {
       text-align: center;
 
+      .logo-icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 16px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--nt-primary) 0%, var(--nt-primary-dark) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 28px;
+      }
+
       h2 {
         margin: 0 0 8px 0;
-        font-size: 28px;
-        color: var(--el-color-primary);
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--nt-text-primary);
       }
 
       p {
         margin: 0;
-        font-size: 14px;
-        color: var(--el-text-color-secondary);
+        font-size: var(--nt-font-size-body);
+        color: var(--nt-text-tertiary);
       }
     }
 
     .el-form {
-      margin-top: 24px;
+      margin-top: var(--nt-spacing-lg);
 
       .el-form-item {
-        margin-bottom: 20px;
+        margin-bottom: var(--nt-spacing-lg);
       }
     }
 
     .footer-links {
       text-align: center;
-      margin-top: 16px;
+      margin-top: var(--nt-spacing-md);
 
       a {
-        color: var(--el-color-primary);
+        color: var(--nt-primary);
         text-decoration: none;
-        font-size: 14px;
+        font-size: var(--nt-font-size-body);
 
         &:hover {
           text-decoration: underline;
@@ -156,5 +212,15 @@ const handleLogin = async () => {
       }
     }
   }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-30px) scale(1.05); }
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 </style>

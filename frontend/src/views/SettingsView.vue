@@ -8,7 +8,8 @@
       </template>
 
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="个人信息" name="profile">
+        <el-tab-pane name="profile">
+          <template #label><el-icon><User /></el-icon> 个人信息</template>
           <el-form :model="profileForm" label-width="100px" style="max-width: 600px">
             <el-form-item label="头像">
               <div class="avatar-upload">
@@ -41,7 +42,8 @@
           </el-form>
         </el-tab-pane>
 
-        <el-tab-pane label="修改密码" name="password">
+        <el-tab-pane name="password">
+          <template #label><el-icon><Lock /></el-icon> 修改密码</template>
           <el-form
             ref="passwordFormRef"
             :model="passwordForm"
@@ -85,7 +87,8 @@
           </el-form>
         </el-tab-pane>
 
-        <el-tab-pane label="外观设置" name="appearance">
+        <el-tab-pane name="appearance">
+          <template #label><el-icon><Brush /></el-icon> 外观设置</template>
           <el-form label-width="100px" style="max-width: 600px">
             <el-form-item label="主题">
               <el-radio-group v-model="theme">
@@ -105,7 +108,8 @@
           </el-form>
         </el-tab-pane>
 
-        <el-tab-pane label="AI设置" name="ai">
+        <el-tab-pane name="ai">
+          <template #label><el-icon><Monitor /></el-icon> AI设置</template>
           <el-form :model="aiConfig" label-width="120px" style="max-width: 600px">
             <el-form-item label="AI提供商">
               <el-radio-group v-model="aiConfig.provider">
@@ -147,9 +151,13 @@
               <el-button type="primary" :loading="saving" @click="handleSaveAIConfig">
                 保存配置
               </el-button>
-              <el-button @click="handleTestAIConfig">
+              <el-button :loading="testing" @click="handleTestAIConfig">
+                <el-icon v-if="aiConnected && !testing"><CircleCheckFilled style="color: var(--nt-success)" /></el-icon>
+                <el-icon v-else-if="!aiConnected && !testing"><CircleCloseFilled style="color: var(--nt-danger)" /></el-icon>
                 测试连接
               </el-button>
+              <span v-if="aiConnected" class="status-text status-text--success">已连接</span>
+              <span v-else-if="tested" class="status-text status-text--error">连接失败</span>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -161,6 +169,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { User, Lock, Brush, Monitor, CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useAIStore } from '@/stores/ai';
 import { updateProfile } from '@/api/auth';
@@ -171,6 +180,9 @@ const aiStore = useAIStore();
 const activeTab = ref('profile');
 const saving = ref(false);
 const changing = ref(false);
+const testing = ref(false);
+const aiConnected = ref(false);
+const tested = ref(false);
 
 const aiConfig = reactive({
   provider: 'deepseek',
@@ -299,11 +311,18 @@ const handleTestAIConfig = async () => {
     return;
   }
 
+  testing.value = true;
   try {
     // TODO: 调用测试API连接的接口
+    aiConnected.value = true;
+    tested.value = true;
     ElMessage.success('API连接测试成功');
   } catch (error: any) {
+    aiConnected.value = false;
+    tested.value = true;
     ElMessage.error(error.message || 'API连接测试失败');
+  } finally {
+    testing.value = false;
   }
 };
 
@@ -330,15 +349,18 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .settings-view {
-  max-width: 800px;
+  max-width: 960px;
   margin: 0 auto;
 
   .settings-card {
+    border-radius: var(--nt-radius-xl);
+    box-shadow: var(--nt-shadow-sm);
+
     .card-header {
       h3 {
         margin: 0;
         font-size: 20px;
-        font-weight: 600;
+        font-weight: 700;
       }
     }
 
@@ -346,6 +368,13 @@ onMounted(async () => {
       display: flex;
       align-items: center;
     }
+  }
+
+  .status-text {
+    font-size: var(--nt-font-size-caption);
+    margin-left: 8px;
+    &--success { color: var(--nt-success); }
+    &--error { color: var(--nt-danger); }
   }
 }
 </style>

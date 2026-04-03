@@ -412,9 +412,9 @@ watch(() => props.noteId, () => {
     .comments {
       .comment-item {
         display: flex;
-        gap: 12px;
-        padding: 16px 0;
-        border-bottom: 1px solid var(--el-border-color-light);
+        gap: var(--nt-spacing-md);
+        padding: var(--nt-spacing-md) 0;
+        border-bottom: 1px solid var(--nt-border-lighter);
 
         &:last-child {
           border-bottom: none;
@@ -450,8 +450,8 @@ watch(() => props.noteId, () => {
             }
 
             .comment-time {
-              font-size: 12px;
-              color: var(--el-text-color-secondary);
+              font-size: var(--nt-font-size-caption);
+              color: var(--nt-text-quaternary);
             }
           }
 

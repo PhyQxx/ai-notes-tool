@@ -3,49 +3,57 @@
     <div class="welcome-section">
       <h2>欢迎回来，{{ user?.nickname || '用户' }}！</h2>
       <p>开始记录您的想法和灵感</p>
+      <div class="quick-actions">
+        <el-button type="primary" @click="router.push('/notes/new')">
+          <el-icon><Plus /></el-icon>
+          新建笔记
+        </el-button>
+        <el-button @click="router.push('/notes')">
+          <el-icon><Search /></el-icon>
+          搜索笔记
+        </el-button>
+        <el-button @click="router.push('/ai')">
+          <el-icon><ChatDotRound /></el-icon>
+          AI 助手
+        </el-button>
+      </div>
     </div>
 
-    <el-row :gutter="24" class="stats-row">
-      <el-col :span="8">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon" style="background-color: #ecf5ff;">
-              <el-icon color="#409eff" :size="32"><Document /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ totalNotes }}</div>
-              <div class="stat-label">笔记总数</div>
-            </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-content">
+          <div class="stat-icon stat-icon--blue">
+            <el-icon :size="32"><Document /></el-icon>
           </div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon" style="background-color: #fef0f0;">
-              <el-icon color="#f56c6c" :size="32"><Star /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ favoriteCount }}</div>
-              <div class="stat-label">收藏笔记</div>
-            </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ totalNotes }}</div>
+            <div class="stat-label">笔记总数</div>
           </div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon" style="background-color: #f0f9ff;">
-              <el-icon color="#67c23a" :size="32"><FolderOpened /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ folderCount }}</div>
-              <div class="stat-label">文件夹</div>
-            </div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-content">
+          <div class="stat-icon stat-icon--red">
+            <el-icon :size="32"><Star /></el-icon>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div class="stat-info">
+            <div class="stat-value">{{ favoriteCount }}</div>
+            <div class="stat-label">收藏笔记</div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-content">
+          <div class="stat-icon stat-icon--green">
+            <el-icon :size="32"><FolderOpened /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ folderCount }}</div>
+            <div class="stat-label">文件夹</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="recent-notes-section">
       <div class="section-header">
@@ -111,7 +119,7 @@
     <!-- 推荐笔记 -->
     <div v-if="recommendNotes.length > 0" class="recommend-section">
       <div class="section-header">
-        <h3>💡 猜你喜欢</h3>
+        <h3>猜你喜欢</h3>
       </div>
       <div class="recommend-list">
         <el-card
@@ -140,6 +148,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { Plus, Search, ChatDotRound } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { getRecommendNotes } from '@/api/note';
@@ -215,52 +224,78 @@ const handleHomeScroll = () => {
   margin: 0 auto;
 
   .welcome-section {
-    margin-bottom: 32px;
+    margin-bottom: var(--nt-spacing-xl);
 
     h2 {
       margin: 0 0 8px 0;
       font-size: 28px;
-      font-weight: 600;
-      color: var(--el-text-color-primary);
+      font-weight: 700;
+      color: var(--nt-text-primary);
     }
 
     p {
-      margin: 0;
-      font-size: 16px;
-      color: var(--el-text-color-secondary);
+      margin: 0 0 var(--nt-spacing-lg) 0;
+      font-size: var(--nt-font-size-body);
+      color: var(--nt-text-tertiary);
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: var(--nt-spacing-md);
+      margin-top: var(--nt-spacing-md);
     }
   }
 
-  .stats-row {
-    margin-bottom: 32px;
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--nt-spacing-lg);
+    margin-bottom: var(--nt-spacing-xl);
 
     .stat-card {
+      background: var(--nt-bg-elevated);
+      border: 1px solid var(--nt-border-default);
+      border-radius: var(--nt-radius-lg);
+      padding: var(--nt-spacing-lg);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: default;
+
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--nt-shadow-lg);
+      }
+
       .stat-content {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: var(--nt-spacing-md);
 
         .stat-icon {
-          width: 64px;
-          height: 64px;
-          border-radius: 12px;
+          width: 56px;
+          height: 56px;
+          border-radius: var(--nt-radius-md);
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
+
+          &--blue { background-color: var(--nt-primary-bg); color: var(--nt-primary); }
+          &--red { background-color: var(--nt-danger-bg); color: var(--nt-danger); }
+          &--green { background-color: var(--nt-success-bg); color: var(--nt-success); }
         }
 
         .stat-info {
           .stat-value {
-            font-size: 32px;
-            font-weight: 600;
-            color: var(--el-text-color-primary);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--nt-text-primary);
             line-height: 1;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
           }
 
           .stat-label {
-            font-size: 14px;
-            color: var(--el-text-color-secondary);
+            font-size: var(--nt-font-size-body);
+            color: var(--nt-text-tertiary);
           }
         }
       }
