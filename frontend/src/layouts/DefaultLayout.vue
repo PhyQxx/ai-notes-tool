@@ -57,6 +57,14 @@
           <el-icon><Delete /></el-icon>
           <span v-if="!isCollapse">回收站</span>
         </div>
+        <div
+          class="menu-item"
+          :class="{ active: isActiveMenu('/graph') }"
+          @click="router.push('/graph')"
+        >
+          <el-icon><Share /></el-icon>
+          <span v-if="!isCollapse">知识图谱</span>
+        </div>
       </div>
 
       <div class="sidebar-footer">
@@ -142,7 +150,7 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessageBox } from 'element-plus';
-import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny, Delete } from '@element-plus/icons-vue';
+import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny, Delete, Share } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { useNotificationStore } from '@/stores/notification';

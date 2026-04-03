@@ -94,3 +94,34 @@ export function toggleFavorite(id: number): Promise<void> {
 export function toggleTop(id: number): Promise<void> {
   return http.post(`/notes/${id}/top`);
 }
+
+/**
+ * 获取推荐笔记
+ */
+export function getRecommendNotes(noteId?: number, limit: number = 5): Promise<Note[]> {
+  return http.get('/notes/recommend', { params: { noteId, limit } });
+}
+
+/**
+ * 获取知识图谱数据
+ */
+export interface GraphNode {
+  id: number;
+  title: string;
+  tags: string[];
+}
+
+export interface GraphEdge {
+  source: number;
+  target: number;
+  type: 'link' | 'tag';
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export function getGraphData(): Promise<GraphData> {
+  return http.get('/notes/graph');
+}

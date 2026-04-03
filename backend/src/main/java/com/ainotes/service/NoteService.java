@@ -7,6 +7,9 @@ import com.ainotes.dto.request.UpdateNoteRequest;
 import com.ainotes.entity.Note;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 笔记服务接口
  *
@@ -104,5 +107,15 @@ public interface NoteService {
      * 清空回收站
      */
     void emptyTrash(Long userId);
+
+    /**
+     * 获取推荐笔记（基于标签相似度）
+     */
+    List<Note> recommendNotes(Long userId, Long noteId, Integer limit);
+
+    /**
+     * 获取知识图谱数据
+     */
+    Map<String, Object> getGraphData(Long userId);
 
 }

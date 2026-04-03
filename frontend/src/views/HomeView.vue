@@ -107,6 +107,33 @@
         </div>
       </div>
     </div>
+
+    <!-- 推荐笔记 -->
+    <div v-if="recommendNotes.length > 0" class="recommend-section">
+      <div class="section-header">
+        <h3>💡 猜你喜欢</h3>
+      </div>
+      <div class="recommend-list">
+        <el-card
+          v-for="note in recommendNotes"
+          :key="note.id"
+          class="note-card"
+          shadow="hover"
+          @click="router.push(`/notes/${note.id}`)"
+        >
+          <div class="note-card-content">
+            <div class="note-header">
+              <h4 class="note-title">{{ note.title || '无标题' }}</h4>
+            </div>
+            <p class="note-preview">{{ note.content.substring(0, 100) }}...</p>
+            <div class="note-meta">
+              <span class="note-time">{{ formatDate(note.updatedAt) }}</span>
+              <el-tag v-if="note.tags && note.tags.length > 0" size="small">{{ note.tags[0] }}</el-tag>
+            </div>
+          </div>
+        </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -115,6 +142,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
+import { getRecommendNotes } from '@/api/note';
 import EmptyState from '@/components/common/EmptyState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
 import SkeletonNoteCard from '@/components/common/SkeletonNoteCard.vue';
@@ -137,6 +165,7 @@ const errorMsg = ref('');
 const homeScrollContainer = ref<HTMLElement | null>(null);
 const homeLoadingMore = ref(false);
 const homeHasMore = ref(true);
+const recommendNotes = ref<any[]>([]);
 
 const totalNotes = computed(() => noteStore.total);
 const favoriteCount = computed(() => noteStore.notes.filter(n => n.isFavorite).length);
@@ -160,6 +189,10 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+  // 加载推荐笔记
+  getRecommendNotes().then((data: any) => {
+    recommendNotes.value = data || [];
+  }).catch(() => {});
 });
 
 const handleHomeScroll = () => {
@@ -329,6 +362,33 @@ const handleHomeScroll = () => {
 
     &.no-more {
       color: var(--el-text-color-placeholder);
+    }
+  }
+
+  .recommend-section {
+    margin-top: 32px;
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      h3 { margin: 0; font-size: 20px; font-weight: 600; color: var(--el-text-color-primary); }
+    }
+    .recommend-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      .note-card { cursor: pointer; transition: transform 0.2s; &:hover { transform: translateY(-4px); }
+        .note-card-content {
+          .note-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px;
+            .note-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--el-text-color-primary); flex: 1; }
+          }
+          .note-preview { margin: 0 0 12px 0; font-size: 14px; color: var(--el-text-color-secondary); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+          .note-meta { display: flex; align-items: center; justify-content: space-between;
+            .note-time { font-size: 12px; color: var(--el-text-color-placeholder); }
+          }
+        }
+      }
     }
   }
 }

@@ -9,8 +9,10 @@ import com.ainotes.dto.request.CreateNoteRequest;
 import com.ainotes.dto.request.UpdateNoteRequest;
 import com.ainotes.dto.response.SearchResultDTO;
 import com.ainotes.entity.Note;
+import com.ainotes.entity.NoteLink;
 import com.ainotes.entity.SpaceMember;
 import com.ainotes.mapper.NoteMapper;
+import com.ainotes.mapper.NoteLinkMapper;
 import com.ainotes.mapper.SpaceMemberMapper;
 import com.ainotes.service.NoteLinkService;
 import com.ainotes.service.NoteService;
@@ -23,9 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * 笔记服务实现类
@@ -39,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NoteServiceImpl implements NoteService {
 
     private final NoteMapper noteMapper;
+    private final NoteLinkMapper noteLinkMapper;
     private final NoteVersionService noteVersionService;
     private final SpaceMemberMapper spaceMemberMapper;
     private final NoteLinkService noteLinkService;
@@ -729,6 +732,170 @@ public class NoteServiceImpl implements NoteService {
             }
         } catch (Exception e) {
             log.warn("清除标签云缓存失败", e);
+        }
+    }
+
+    @Override
+    public List<Note> recommendNotes(Long userId, Long noteId, Integer limit) {
+        if (limit == null || limit <= 0) limit = 5;
+        if (limit > 20) limit = 20;
+
+        // 获取用户所有未删除笔记
+        LambdaQueryWrapper<Note> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Note::getUserId, userId)
+               .eq(Note::getDeleted, 0)
+               .isNotNull(Note::getTags)
+               .ne(Note::getTags, "");
+        List<Note> allNotes = noteMapper.selectList(wrapper);
+
+        if (allNotes.isEmpty()) return Collections.emptyList();
+
+        Set<String> targetTags = new HashSet<>();
+        Note sourceNote = null;
+
+        if (noteId != null) {
+            sourceNote = allNotes.stream().filter(n -> n.getId().equals(noteId)).findFirst().orElse(null);
+            if (sourceNote != null) {
+                targetTags = parseTags(sourceNote.getTags());
+            }
+        } else {
+            // 基于最近编辑的笔记的标签
+            LambdaQueryWrapper<Note> recentWrapper = new LambdaQueryWrapper<>();
+            recentWrapper.eq(Note::getUserId, userId)
+                        .eq(Note::getDeleted, 0)
+                        .isNotNull(Note::getTags)
+                        .ne(Note::getTags, "")
+                        .orderByDesc(Note::getUpdatedAt)
+                        .last("LIMIT 5");
+            List<Note> recentNotes = noteMapper.selectList(recentWrapper);
+            for (Note n : recentNotes) {
+                targetTags.addAll(parseTags(n.getTags()));
+            }
+        }
+
+        if (targetTags.isEmpty()) {
+            // 无标签，返回最近更新的笔记
+            LambdaQueryWrapper<Note> fallbackWrapper = new LambdaQueryWrapper<>();
+            fallbackWrapper.eq(Note::getUserId, userId)
+                          .eq(Note::getDeleted, 0)
+                          .orderByDesc(Note::getUpdatedAt)
+                          .last("LIMIT " + limit);
+            if (noteId != null) {
+                fallbackWrapper.ne(Note::getId, noteId);
+            }
+            return noteMapper.selectList(fallbackWrapper);
+        }
+
+        // 计算每篇笔记的相似度得分
+        LocalDateTime now = LocalDateTime.now();
+        List<NoteScore> scored = new ArrayList<>();
+        for (Note note : allNotes) {
+            if (noteId != null && note.getId().equals(noteId)) continue;
+            Set<String> noteTags = parseTags(note.getTags());
+            Set<String> overlap = new HashSet<>(noteTags);
+            overlap.retainAll(targetTags);
+
+            if (overlap.isEmpty()) continue;
+
+            // 标签重叠度得分
+            double tagScore = (double) overlap.size() / (double) targetTags.size();
+            // 时间权重：最近30天的笔记权重更高
+            double timeWeight = 1.0;
+            if (note.getUpdatedAt() != null) {
+                long daysDiff = java.time.Duration.between(note.getUpdatedAt(), now).toDays();
+                if (daysDiff < 7) timeWeight = 2.0;
+                else if (daysDiff < 30) timeWeight = 1.5;
+                else if (daysDiff < 90) timeWeight = 1.2;
+            }
+            scored.add(new NoteScore(note, tagScore * timeWeight));
+        }
+
+        scored.sort((a, b) -> Double.compare(b.score, a.score));
+        return scored.stream().limit(limit).map(ns -> ns.note).collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<String, Object> getGraphData(Long userId) {
+        // 获取用户所有未删除笔记
+        LambdaQueryWrapper<Note> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Note::getUserId, userId).eq(Note::getDeleted, 0);
+        List<Note> notes = noteMapper.selectList(wrapper);
+
+        Set<Long> noteIds = notes.stream().map(Note::getId).collect(Collectors.toSet());
+
+        // 节点
+        List<Map<String, Object>> nodes = notes.stream().map(n -> {
+            Map<String, Object> node = new HashMap<>();
+            node.put("id", n.getId());
+            node.put("title", n.getTitle() != null ? n.getTitle() : "无标题");
+            node.put("tags", parseTags(n.getTags()));
+            return node;
+        }).collect(Collectors.toList());
+
+        // 边 - 双向链接
+        List<Map<String, Object>> edges = new ArrayList<>();
+        LambdaQueryWrapper<NoteLink> linkWrapper = new LambdaQueryWrapper<>();
+        linkWrapper.in(NoteLink::getSourceNoteId, noteIds)
+                   .or(w -> w.in(NoteLink::getTargetNoteId, noteIds));
+        List<NoteLink> links = noteLinkMapper.selectList(linkWrapper);
+        for (NoteLink link : links) {
+            if (!noteIds.contains(link.getSourceNoteId()) || !noteIds.contains(link.getTargetNoteId())) continue;
+            if (link.getSourceNoteId().equals(link.getTargetNoteId())) continue;
+            Map<String, Object> edge = new HashMap<>();
+            edge.put("source", link.getSourceNoteId());
+            edge.put("target", link.getTargetNoteId());
+            edge.put("type", "link");
+            edges.add(edge);
+        }
+
+        // 边 - 标签关系（共享>=2个标签）
+        Map<Long, Set<String>> noteTagMap = new HashMap<>();
+        for (Note n : notes) {
+            noteTagMap.put(n.getId(), parseTags(n.getTags()));
+        }
+        List<Long> idList = new ArrayList<>(noteIds);
+        Set<String> seenEdges = new HashSet<>();
+        for (int i = 0; i < idList.size(); i++) {
+            for (int j = i + 1; j < idList.size(); j++) {
+                Long a = idList.get(i), b = idList.get(j);
+                Set<String> tagsA = noteTagMap.getOrDefault(a, Collections.emptySet());
+                Set<String> tagsB = noteTagMap.getOrDefault(b, Collections.emptySet());
+                Set<String> overlap = new HashSet<>(tagsA);
+                overlap.retainAll(tagsB);
+                if (overlap.size() >= 2) {
+                    String key = Math.min(a, b) + "-" + Math.max(a, b) + "-tag";
+                    if (!seenEdges.contains(key)) {
+                        seenEdges.add(key);
+                        Map<String, Object> edge = new HashMap<>();
+                        edge.put("source", a);
+                        edge.put("target", b);
+                        edge.put("type", "tag");
+                        edges.add(edge);
+                    }
+                }
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("nodes", nodes);
+        result.put("edges", edges);
+        return result;
+    }
+
+    private Set<String> parseTags(String tags) {
+        if (tags == null || tags.isBlank()) return Collections.emptySet();
+        return Arrays.stream(tags.split("[,，]"))
+                     .map(String::trim)
+                     .filter(s -> !s.isEmpty())
+                     .collect(Collectors.toSet());
+    }
+
+    private static class NoteScore {
+        Note note;
+        double score;
+        NoteScore(Note note, double score) {
+            this.note = note;
+            this.score = score;
         }
     }
 

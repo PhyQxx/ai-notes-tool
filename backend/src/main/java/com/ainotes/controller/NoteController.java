@@ -17,6 +17,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 笔记控制器
  *
@@ -192,6 +195,25 @@ public class NoteController {
         Long userId = (Long) authentication.getPrincipal();
         noteService.emptyTrash(userId);
         return Result.success("回收站已清空", null);
+    }
+
+    @GetMapping("/recommend")
+    @Operation(summary = "获取推荐笔记")
+    public Result<List<Note>> recommendNotes(
+            @RequestParam(required = false) Long noteId,
+            @RequestParam(defaultValue = "5") Integer limit,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        List<Note> notes = noteService.recommendNotes(userId, noteId, limit);
+        return Result.success(notes);
+    }
+
+    @GetMapping("/graph")
+    @Operation(summary = "获取知识图谱数据")
+    public Result<Map<String, Object>> getGraphData(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        Map<String, Object> data = noteService.getGraphData(userId);
+        return Result.success(data);
     }
 
 }

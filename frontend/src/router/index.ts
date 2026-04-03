@@ -78,6 +78,11 @@ const routes: RouteRecordRaw[] = [
         path: 'trash',
         name: 'Trash',
         component: () => import('@/views/TrashView.vue')
+      },
+      {
+        path: 'graph',
+        name: 'Graph',
+        component: () => import('@/views/GraphView.vue')
       }
     ]
   },
