@@ -163,7 +163,30 @@ a {
   }
 }
 
-// 响应式设计
+// ===== 响应式断点 =====
+
+// sm (640px)
+@media (max-width: 640px) {
+  .notes-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .el-main {
+    padding: var(--space-4);
+  }
+
+  .el-header {
+    padding: 0 var(--space-4);
+  }
+
+  .command-palette {
+    width: 100% !important;
+    margin: 0;
+    top: 0 !important;
+  }
+}
+
+// md (768px)
 @media (max-width: 768px) {
   .el-aside {
     position: fixed !important;
@@ -174,16 +197,31 @@ a {
     transform: translateX(-100%);
     transition: transform 0.3s;
 
-    &.is-open {
+    &.sidebar-visible {
       transform: translateX(0);
     }
   }
 
   .el-main {
-    padding: 16px;
+    padding: var(--space-4);
   }
 
   .el-header {
-    padding: 0 16px;
+    padding: 0 var(--space-4);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: var(--bg-overlay);
+    z-index: 999;
+  }
+}
+
+// lg (1024px)
+@media (max-width: 1024px) {
+  .default-layout .sidebar {
+    width: 64px !important;
   }
 }

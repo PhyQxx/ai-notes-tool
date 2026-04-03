@@ -15,7 +15,7 @@
           v-model="noteTitle"
           placeholder="输入笔记标题"
           size="large"
-          style="width: 400px"
+          class="title-input"
         />
         <el-tag v-if="saveStatus" :type="saveStatus.type" size="small">
           {{ saveStatus.text }}
@@ -23,44 +23,59 @@
       </div>
 
       <div class="header-right">
-        <el-button-group>
-          <el-button @click="handleToggleFavorite">
-            <el-icon :color="currentNote?.isFavorite ? '#f56c6c' : ''">
-              <Star />
-            </el-icon>
-          </el-button>
-          <el-button @click="handleToggleTop">
-            <el-icon :color="currentNote?.isTop ? '#409eff' : ''">
-              <Top />
-            </el-icon>
-          </el-button>
-        </el-button-group>
-        <el-button @click="showVersionPanel = true">
-          <el-icon><Clock /></el-icon>
-          版本历史
+        <el-button @click="handleToggleFavorite">
+          <el-icon :color="currentNote?.isFavorite ? '#f56c6c' : ''">
+            <Star />
+          </el-icon>
         </el-button>
-        <el-button @click="showCommentPanel = true">
+        <el-button @click="handleToggleTop">
+          <el-icon :color="currentNote?.isTop ? 'var(--brand-primary)' : ''">
+            <Top />
+          </el-icon>
+        </el-button>
+        <el-button @click="showAIAssistant = true">
           <el-icon><ChatDotRound /></el-icon>
-          评论 ({{ commentCount }})
+          AI助手
         </el-button>
-        <el-button @click="openBacklinks">
-          <el-icon><Link /></el-icon>
-          反向链接 ({{ backlinks.length }})
-        </el-button>
-        <ExportMenu :note-id="noteId" :note-title="noteTitle" />
         <el-button @click="openShareDialog">
           <el-icon><Share /></el-icon>
           分享
         </el-button>
-        <el-button type="primary" @click="showAIAssistant = true">
-          <el-icon><ChatDotRound /></el-icon>
-          AI助手
-        </el-button>
         <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-dropdown trigger="click">
+          <el-button>
+            <el-icon><MoreFilled /></el-icon>
+            更多
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="showVersionPanel = true">
+                <el-icon><Clock /></el-icon>
+                版本历史
+              </el-dropdown-item>
+              <el-dropdown-item @click="showCommentPanel = true">
+                <el-icon><ChatDotRound /></el-icon>
+                评论 ({{ commentCount }})
+              </el-dropdown-item>
+              <el-dropdown-item @click="openBacklinks">
+                <el-icon><Link /></el-icon>
+                反向链接 ({{ backlinks.length }})
+              </el-dropdown-item>
+              <el-dropdown-item>
+                <ExportMenu :note-id="noteId" :note-title="noteTitle" />
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
     <div class="editor-toolbar">
+      <el-radio-group v-model="editorMode" size="small" @change="handleEditorModeChange">
+        <el-radio-button label="markdown">Markdown</el-radio-button>
+        <el-radio-button label="richtext">富文本</el-radio-button>
+      </el-radio-group>
+      <div class="toolbar-divider" />
       <CollabIndicator />
       <el-tag
         v-for="tag in noteTags"
@@ -87,12 +102,6 @@
     </div>
 
     <div class="editor-container">
-      <div class="editor-mode-switch">
-        <el-radio-group v-model="editorMode" @change="handleEditorModeChange">
-          <el-radio-button label="markdown">Markdown</el-radio-button>
-          <el-radio-button label="richtext">富文本</el-radio-button>
-        </el-radio-group>
-      </div>
 
       <MarkdownEditor
         v-if="editorMode === 'markdown'"
@@ -720,43 +729,68 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 24px;
+    padding: var(--space-4) var(--space-6);
     border-bottom: 1px solid var(--el-border-color);
-    background-color: var(--el-bg-color);
+    background-color: var(--bg-header);
+    gap: var(--space-4);
 
     .header-left {
       display: flex;
       align-items: center;
-      min-width: 200px;
+      min-width: 180px;
+      flex-shrink: 0;
 
       .note-breadcrumb {
-        font-size: 14px;
+        font-size: var(--font-size-body);
       }
     }
 
     .header-center {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: var(--space-3);
+      flex: 1;
+      justify-content: center;
+
+      .title-input {
+        flex: 1;
+        max-width: 600px;
+
+        :deep(.el-input__inner) {
+          font-size: 18px;
+          font-weight: 600;
+          text-align: center;
+        }
+      }
 
       .el-tag {
-        font-size: 12px;
+        font-size: var(--font-size-caption);
+        flex-shrink: 0;
       }
     }
 
     .header-right {
       display: flex;
-      gap: 12px;
+      align-items: center;
+      gap: var(--space-2);
+      flex-shrink: 0;
     }
   }
 
   .editor-toolbar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
     border-bottom: 1px solid var(--el-border-color);
-    background-color: var(--el-bg-color-page);
+    background-color: var(--bg-page);
+
+    .toolbar-divider {
+      width: 1px;
+      height: 20px;
+      background-color: var(--el-border-color);
+      margin: 0 var(--space-1);
+    }
   }
 
   .editor-container {
@@ -764,14 +798,6 @@ onBeforeUnmount(() => {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-
-    .editor-mode-switch {
-      display: flex;
-      justify-content: center;
-      padding: 8px;
-      background-color: var(--el-bg-color-page);
-      border-bottom: 1px solid var(--el-border-color);
-    }
   }
 }
 

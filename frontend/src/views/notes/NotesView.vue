@@ -432,22 +432,27 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    margin-bottom: var(--space-6);
     flex-wrap: wrap;
-    gap: 12px;
+    gap: var(--space-3);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--bg-page);
+    padding: var(--space-3) 0;
 
     .toolbar-left {
       display: flex;
-      gap: 12px;
+      gap: var(--space-3);
       align-items: center;
       flex-wrap: wrap;
 
       .mode-title {
         margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-        color: var(--el-text-color-primary);
-        margin-right: 8px;
+        font-size: var(--font-size-h3);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin-right: var(--space-2);
       }
     }
   }
@@ -463,14 +468,24 @@ onMounted(async () => {
   .notes-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    gap: var(--space-5);
 
     .note-card {
       cursor: pointer;
-      transition: transform 0.2s;
+      border-radius: var(--radius-lg);
+      transition: all var(--duration-fast) var(--ease-default);
+      border: 1px solid var(--el-border-color-lighter);
 
       &:hover {
         transform: translateY(-4px);
+        border-color: var(--brand-primary);
+        box-shadow: var(--shadow-md);
+      }
+
+      @for $i from 1 through 20 {
+        &:nth-child(#{$i}) {
+          animation: slideUp var(--duration-normal) var(--ease-out) #{$i * 30}ms both;
+        }
       }
     }
   }
@@ -479,25 +494,26 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 24px 0;
-    color: var(--el-text-color-secondary);
-    font-size: 14px;
+    gap: var(--space-2);
+    padding: var(--space-6) 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-body);
 
     &.no-more {
-      color: var(--el-text-color-placeholder);
+      color: var(--text-placeholder);
     }
   }
 
   .batch-bar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    background: var(--el-color-primary-light-9);
-    border-radius: 8px;
-    margin-bottom: 16px;
-    font-size: 14px;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--brand-primary-bg);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    font-size: var(--font-size-body);
+    border: 1px solid var(--brand-primary-border);
   }
 
   .note-card {
@@ -505,10 +521,21 @@ onMounted(async () => {
 
     .note-checkbox {
       position: absolute;
-      top: 12px;
-      right: 12px;
+      top: var(--space-3);
+      right: var(--space-3);
       z-index: 2;
     }
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

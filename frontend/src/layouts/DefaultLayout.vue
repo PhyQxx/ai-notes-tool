@@ -1,9 +1,11 @@
 <template>
   <el-container class="default-layout">
-    <el-aside :width="isCollapse ? '64px' : '240px'" class="sidebar">
+    <!-- Mobile sidebar overlay -->
+    <div v-if="sidebarVisible" class="sidebar-overlay" @click="sidebarVisible = false" />
+    <el-aside :width="isCollapse ? '64px' : '240px'" :class="['sidebar', { 'sidebar-visible': sidebarVisible }]">
       <div class="logo">
-        <span v-if="!isCollapse">AI Notes</span>
-        <span v-else>AI</span>
+        <span class="logo-icon">📝</span>
+        <span v-if="!isCollapse" class="logo-text">AI Notes</span>
       </div>
 
       <el-button type="primary" class="new-note-btn" @click="handleNewNote">
@@ -17,61 +19,67 @@
       </div>
 
       <div class="menu-section">
-        <div
-          class="menu-item"
-          :class="{ active: isActiveMenu('/notes/recent') }"
-          @click="router.push('/notes/recent')"
-        >
-          <el-icon><Clock /></el-icon>
-          <span v-if="!isCollapse">{{ t('nav.recentEdits') }}</span>
+        <div class="menu-group">
+          <div class="menu-group-label">导航</div>
+          <div
+            class="menu-item"
+            :class="{ active: isActiveMenu('/notes/recent') }"
+            @click="router.push('/notes/recent')"
+          >
+            <el-icon><Clock /></el-icon>
+            <span v-if="!isCollapse">{{ t('nav.recentEdits') }}</span>
+          </div>
+          <div
+            class="menu-item"
+            :class="{ active: isActiveMenu('/notes/favorites') }"
+            @click="router.push('/notes/favorites')"
+          >
+            <el-icon><Star /></el-icon>
+            <span v-if="!isCollapse">{{ t('nav.favorites') }}</span>
+          </div>
+          <div
+            class="menu-item"
+            :class="{ active: isActiveMenu('/spaces') || isActiveMenu('/spaces/') }"
+            @click="router.push('/spaces')"
+          >
+            <el-icon><FolderOpened /></el-icon>
+            <span v-if="!isCollapse">{{ t('nav.teamSpaces') }}</span>
+          </div>
+          <div
+            class="menu-item"
+            :class="{ active: isActiveMenu('/ai/chat') }"
+            @click="router.push('/ai/chat')"
+          >
+            <el-icon><ChatDotRound /></el-icon>
+            <span v-if="!isCollapse">{{ t('nav.aiAssistant') }}</span>
+          </div>
+          <div
+            class="menu-item"
+            :class="{ active: isActiveMenu('/graph') }"
+            @click="router.push('/graph')"
+          >
+            <el-icon><Share /></el-icon>
+            <span v-if="!isCollapse">{{ t('nav.knowledgeGraph') }}</span>
+          </div>
         </div>
-        <div
-          class="menu-item"
-          :class="{ active: isActiveMenu('/notes/favorites') }"
-          @click="router.push('/notes/favorites')"
-        >
-          <el-icon><Star /></el-icon>
-          <span v-if="!isCollapse">{{ t('nav.favorites') }}</span>
-        </div>
-        <div
-          class="menu-item"
-          :class="{ active: isActiveMenu('/spaces') || isActiveMenu('/spaces/') }"
-          @click="router.push('/spaces')"
-        >
-          <el-icon><FolderOpened /></el-icon>
-          <span v-if="!isCollapse">{{ t('nav.teamSpaces') }}</span>
-        </div>
-        <div
-          class="menu-item"
-          :class="{ active: isActiveMenu('/ai/chat') }"
-          @click="router.push('/ai/chat')"
-        >
-          <el-icon><ChatDotRound /></el-icon>
-          <span v-if="!isCollapse">{{ t('nav.aiAssistant') }}</span>
-        </div>
-        <div
-          class="menu-item"
-          :class="{ active: isActiveMenu('/trash') }"
-          @click="router.push('/trash')"
-        >
-          <el-icon><Delete /></el-icon>
-          <span v-if="!isCollapse">{{ t('nav.trash') }}</span>
-        </div>
-        <div
-          class="menu-item"
-          :class="{ active: isActiveMenu('/graph') }"
-          @click="router.push('/graph')"
-        >
-          <el-icon><Share /></el-icon>
-          <span v-if="!isCollapse">{{ t('nav.knowledgeGraph') }}</span>
-        </div>
-        <div
-          class="menu-item"
-          :class="{ active: isActiveMenu('/audit-logs') }"
-          @click="router.push('/audit-logs')"
-        >
-          <el-icon><Memo /></el-icon>
-          <span v-if="!isCollapse">操作日志</span>
+        <div class="menu-group">
+          <div class="menu-group-label">管理</div>
+          <div
+            class="menu-item"
+            :class="{ active: isActiveMenu('/trash') }"
+            @click="router.push('/trash')"
+          >
+            <el-icon><Delete /></el-icon>
+            <span v-if="!isCollapse">{{ t('nav.trash') }}</span>
+          </div>
+          <div
+            class="menu-item"
+            :class="{ active: isActiveMenu('/audit-logs') }"
+            @click="router.push('/audit-logs')"
+          >
+            <el-icon><Memo /></el-icon>
+            <span v-if="!isCollapse">操作日志</span>
+          </div>
         </div>
       </div>
 
@@ -89,10 +97,15 @@
     <el-container class="main-container">
       <el-header class="header">
         <div class="header-left">
+          <!-- Mobile hamburger -->
+          <el-button v-if="showMobileMenu" text class="hamburger-btn" @click="sidebarVisible = !sidebarVisible">
+            <el-icon :size="20"><Expand /></el-icon>
+          </el-button>
           <el-input
             v-model="searchKeyword"
             placeholder="搜索笔记..."
             clearable
+            class="search-input"
             @keyup.enter="handleSearch"
           >
             <template #prefix>
@@ -110,7 +123,9 @@
               </el-icon>
             </el-button>
           </el-tooltip>
+          <div class="header-divider" />
           <NotificationBell />
+          <div class="header-divider" />
           <el-dropdown trigger="click">
             <div class="user-info">
               <el-avatar :size="32" :src="user?.avatar || defaultAvatar">
@@ -156,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ElMessageBox } from 'element-plus';
@@ -179,28 +194,31 @@ const noteStore = useNoteStore();
 const themeStore = useThemeStore();
 
 const isCollapse = ref(false);
+const sidebarVisible = ref(false);
+const showMobileMenu = ref(false);
+
+const checkMobile = () => {
+  showMobileMenu.value = window.innerWidth <= 768;
+};
+
 const searchKeyword = ref('');
 const user = authStore.user;
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
 
-// 切换侧边栏
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value;
 };
 
-// 切换主题（light → dark → system 循环）
 const cycleThemeMode = () => {
   const modes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
   const current = modes.indexOf(themeStore.mode);
   themeStore.setMode(modes[(current + 1) % 3]);
 };
 
-// 新建笔记
 const handleNewNote = () => {
   router.push('/notes/new');
 };
 
-// 搜索笔记
 const handleSearch = () => {
   if (searchKeyword.value.trim()) {
     noteStore.search(searchKeyword.value.trim());
@@ -208,7 +226,6 @@ const handleSearch = () => {
   }
 };
 
-// 退出登录
 const handleLogout = async () => {
   try {
     await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
@@ -223,34 +240,30 @@ const handleLogout = async () => {
   }
 };
 
-// 检查菜单是否激活
 const isActiveMenu = (path: string) => {
   return router.currentRoute.value.path === path;
 };
 
 onMounted(async () => {
-  // 初始化用户信息
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
   await authStore.initAuth();
-  // 加载文件夹树
   await noteStore.fetchFolders();
-  // 初始化 WebSocket
   const token = getToken();
   if (token) {
     wsClient.connect(token);
   }
-  // 初始化通知
   const notificationStore = useNotificationStore();
   notificationStore.initWSListener();
   notificationStore.fetchUnreadCount();
-  // Ctrl+K 全局快捷键
   document.addEventListener('keydown', handleKeyDown);
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkMobile);
   document.removeEventListener('keydown', handleKeyDown);
 });
 
-// Ctrl+K Command Palette
 const showCommandPalette = ref(false);
 const commandKeyword = ref('');
 const commandResults = ref<any[]>([]);
@@ -293,65 +306,123 @@ const handleCommandSelect = (item: any) => {
 .default-layout {
   height: 100vh;
 
+  .sidebar-overlay {
+    display: none;
+  }
+
   .sidebar {
-    background-color: var(--el-bg-color);
+    background-color: var(--bg-sidebar);
     border-right: 1px solid var(--el-border-color);
     display: flex;
     flex-direction: column;
-    transition: width 0.3s;
+    transition: width var(--duration-normal) var(--ease-default);
+    overflow: hidden;
 
     .logo {
       height: 60px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      font-weight: bold;
-      color: var(--el-color-primary);
+      gap: var(--space-2);
+      padding: 0 var(--space-4);
       border-bottom: 1px solid var(--el-border-color);
+      flex-shrink: 0;
+
+      .logo-icon {
+        font-size: 24px;
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--brand-primary-bg);
+        border-radius: var(--radius-md);
+      }
+
+      .logo-text {
+        font-size: var(--font-size-h4);
+        font-weight: var(--font-weight-bold);
+        color: var(--brand-primary);
+        white-space: nowrap;
+        overflow: hidden;
+      }
     }
 
     .new-note-btn {
-      margin: 16px;
-      width: calc(100% - 32px);
+      margin: var(--space-4);
+      width: calc(100% - var(--space-8));
       justify-content: center;
     }
 
     .folder-section {
       flex: 1;
       overflow-y: auto;
-      padding: 0 16px;
+      padding: 0 var(--space-4);
 
       .section-title {
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
-        margin-bottom: 8px;
+        font-size: var(--font-size-caption);
+        color: var(--text-secondary);
+        margin-bottom: var(--space-2);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: var(--font-weight-medium);
       }
     }
 
     .menu-section {
-      padding: 8px 16px;
+      padding: var(--space-2) var(--space-4);
       border-top: 1px solid var(--el-border-color);
-      border-bottom: 1px solid var(--el-border-color);
+
+      .menu-group {
+        margin-bottom: var(--space-2);
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      .menu-group-label {
+        font-size: var(--font-size-caption);
+        color: var(--text-secondary);
+        padding: var(--space-1) var(--space-3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: var(--font-weight-medium);
+      }
 
       .menu-item {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 10px 12px;
-        border-radius: 8px;
+        gap: var(--space-3);
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-md);
         cursor: pointer;
-        transition: all 0.2s;
-        color: var(--el-text-color-primary);
-        font-size: 14px;
+        transition: all var(--duration-fast) var(--ease-default);
+        color: var(--text-regular);
+        font-size: var(--font-size-body);
+        position: relative;
 
         &:hover {
-          background-color: var(--el-fill-color-light);
+          background-color: var(--bg-hover);
+          color: var(--text-primary);
         }
 
         &.active {
-          background-color: var(--el-color-primary-light-9);
-          color: var(--el-color-primary);
+          background-color: var(--brand-primary-bg);
+          color: var(--brand-primary);
+          font-weight: var(--font-weight-medium);
+
+          &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 20px;
+            background-color: var(--brand-primary);
+            border-radius: var(--radius-full);
+          }
         }
       }
     }
@@ -362,6 +433,7 @@ const handleCommandSelect = (item: any) => {
       align-items: center;
       justify-content: center;
       border-top: 1px solid var(--el-border-color);
+      flex-shrink: 0;
     }
   }
 
@@ -370,65 +442,96 @@ const handleCommandSelect = (item: any) => {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 24px;
+      padding: 0 var(--space-6);
       border-bottom: 1px solid var(--el-border-color);
-      background-color: var(--el-bg-color);
+      background-color: var(--bg-header);
+      height: 60px;
 
       .header-left {
-        width: 300px;
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        flex: 1;
 
-        .el-input {
+        .hamburger-btn {
+          display: none;
+        }
+
+        .search-input {
+          max-width: 400px;
           width: 100%;
+
+          :deep(.el-input__wrapper) {
+            border-radius: var(--radius-full) !important;
+          }
         }
       }
 
       .header-right {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
+
+        .header-divider {
+          width: 1px;
+          height: 20px;
+          background-color: var(--el-border-color);
+          margin: 0 var(--space-1);
+        }
+
         .user-info {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: var(--space-3);
           cursor: pointer;
+          padding: var(--space-1) var(--space-2);
+          border-radius: var(--radius-md);
+          transition: background-color var(--duration-fast);
+
+          &:hover {
+            background-color: var(--bg-hover);
+          }
 
           .username {
-            font-size: 14px;
-            color: var(--el-text-color-primary);
+            font-size: var(--font-size-body);
+            color: var(--text-primary);
           }
         }
       }
     }
 
     .main-content {
-      background-color: var(--el-bg-color-page);
-      padding: 24px;
+      background-color: var(--bg-page);
+      padding: var(--space-6);
       overflow-y: auto;
     }
   }
 
   .command-results {
-    margin-top: 12px;
+    margin-top: var(--space-3);
     max-height: 400px;
     overflow-y: auto;
 
     .command-item {
-      padding: 12px;
-      border-radius: 8px;
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: background-color var(--duration-fast);
 
       &:hover {
-        background-color: var(--el-fill-color-light);
+        background-color: var(--bg-hover);
       }
 
       .command-item-title {
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--el-text-color-primary);
-        margin-bottom: 4px;
+        font-size: var(--font-size-body);
+        font-weight: var(--font-weight-medium);
+        color: var(--text-primary);
+        margin-bottom: var(--space-1);
       }
 
       .command-item-preview {
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
+        font-size: var(--font-size-caption);
+        color: var(--text-secondary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -438,9 +541,69 @@ const handleCommandSelect = (item: any) => {
 
   .command-empty {
     text-align: center;
-    padding: 24px;
-    color: var(--el-text-color-placeholder);
-    font-size: 14px;
+    padding: var(--space-6);
+    color: var(--text-placeholder);
+    font-size: var(--font-size-body);
+  }
+}
+
+// Responsive: lg - sidebar collapses
+@media (max-width: 1024px) {
+  .default-layout .sidebar {
+    width: 64px !important;
+
+    .logo .logo-text,
+    .folder-section .section-title,
+    .menu-group-label,
+    .menu-item span {
+      display: none;
+    }
+
+    .new-note-btn span {
+      display: none;
+    }
+  }
+}
+
+// Responsive: md - sidebar hidden, hamburger
+@media (max-width: 768px) {
+  .default-layout {
+    .sidebar-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: var(--bg-overlay);
+      z-index: 1000;
+    }
+
+    .sidebar {
+      position: fixed !important;
+      z-index: 1001;
+      height: 100vh;
+      left: 0;
+      top: 0;
+      transform: translateX(-100%);
+      transition: transform var(--duration-normal) var(--ease-default);
+
+      &.sidebar-visible {
+        transform: translateX(0);
+      }
+    }
+
+    .main-container .header {
+      .header-left .hamburger-btn {
+        display: flex;
+      }
+    }
+  }
+}
+
+// Responsive: sm - command palette fullscreen
+@media (max-width: 640px) {
+  .default-layout .command-palette {
+    width: 100% !important;
+    margin: 0;
+    top: 0 !important;
   }
 }
 </style>
