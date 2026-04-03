@@ -113,11 +113,25 @@
         <router-view />
       </el-main>
     </el-container>
+
+    <!-- Ctrl+K Command Palette -->
+    <el-dialog v-model="showCommandPalette" width="560px" :show-close="false" class="command-palette" top="15vh" @opened="focusCommandInput">
+      <el-input ref="commandInputRef" v-model="commandKeyword" placeholder="搜索笔记，输入关键词后回车跳转..." size="large" clearable @keyup.enter="handleCommandSearch">
+        <template #prefix><el-icon><Search /></el-icon></template>
+      </el-input>
+      <div v-if="commandResults.length > 0" class="command-results">
+        <div v-for="item in commandResults" :key="item.id" class="command-item" @click="handleCommandSelect(item)">
+          <div class="command-item-title">{{ item.title || '无标题' }}</div>
+          <div class="command-item-preview">{{ (item.content || '').substring(0, 60) }}</div>
+        </div>
+      </div>
+      <div v-else-if="commandSearched" class="command-empty">未找到匹配的笔记</div>
+    </el-dialog>
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessageBox } from 'element-plus';
 import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny } from '@element-plus/icons-vue';
@@ -127,6 +141,7 @@ import { useNotificationStore } from '@/stores/notification';
 import { useThemeStore } from '@/stores/theme';
 import { getToken } from '@/utils/storage';
 import wsClient from '@/utils/websocket';
+import { fullTextSearch } from '@/api/note';
 import FolderTree from '@/components/common/FolderTree.vue';
 import NotificationBell from '@/components/common/NotificationBell.vue';
 
@@ -199,7 +214,51 @@ onMounted(async () => {
   const notificationStore = useNotificationStore();
   notificationStore.initWSListener();
   notificationStore.fetchUnreadCount();
+  // Ctrl+K 全局快捷键
+  document.addEventListener('keydown', handleKeyDown);
 });
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeyDown);
+});
+
+// Ctrl+K Command Palette
+const showCommandPalette = ref(false);
+const commandKeyword = ref('');
+const commandResults = ref<any[]>([]);
+const commandSearched = ref(false);
+const commandInputRef = ref();
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    showCommandPalette.value = true;
+    commandKeyword.value = '';
+    commandResults.value = [];
+    commandSearched.value = false;
+  }
+};
+
+const focusCommandInput = () => {
+  nextTick(() => commandInputRef.value?.focus());
+};
+
+const handleCommandSearch = async () => {
+  const kw = commandKeyword.value.trim();
+  if (!kw) return;
+  commandSearched.value = true;
+  try {
+    const result = await fullTextSearch(kw, 'all');
+    commandResults.value = (result.records || []).slice(0, 10);
+  } catch (e) {
+    commandResults.value = [];
+  }
+};
+
+const handleCommandSelect = (item: any) => {
+  showCommandPalette.value = false;
+  router.push(`/notes/${item.id}`);
+};
 </script>
 
 <style scoped lang="scss">
