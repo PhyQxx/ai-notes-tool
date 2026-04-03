@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-notes-backend
+    ports:
+      - "8083:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - GLM_API_KEY=${GLM_API_KEY:-}
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - notes-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-notes-frontend
+    ports:
+      - "8091:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - notes-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-notes-redis
+    restart: unless-stopped
+    networks:
+      - notes-net
+
+  minio:
+    image: minio/minio
+    container_name: ai-notes-minio
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    networks:
+      - notes-net
+
+networks:
+  notes-net:
+    driver: bridge
