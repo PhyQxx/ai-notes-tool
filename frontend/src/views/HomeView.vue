@@ -316,5 +316,20 @@ const handleHomeScroll = () => {
       }
     }
   }
+
+  .load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 0;
+    color: var(--el-text-color-secondary);
+    font-size: 14px;
+    grid-column: 1 / -1;
+
+    &.no-more {
+      color: var(--el-text-color-placeholder);
+    }
+  }
 }
 </style>

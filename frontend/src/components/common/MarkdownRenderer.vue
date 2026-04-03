@@ -33,11 +33,11 @@ const renderContent = () => {
           footnotes: true,
         },
         highlight: {
-          style: 'github',
+          style: themeStore.getEffectiveTheme() === 'dark' ? 'github-dark' : 'github',
           lineNumber: true,
         },
         mermaid: {
-          theme: 'default',
+          theme: themeStore.getEffectiveTheme() === 'dark' ? 'dark' : 'default',
         },
       },
       after: () => {
