@@ -12,6 +12,7 @@ import com.ainotes.entity.Note;
 import com.ainotes.entity.SpaceMember;
 import com.ainotes.mapper.NoteMapper;
 import com.ainotes.mapper.SpaceMemberMapper;
+import com.ainotes.service.NoteLinkService;
 import com.ainotes.service.NoteService;
 import com.ainotes.service.NoteVersionService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class NoteServiceImpl implements NoteService {
     private final NoteMapper noteMapper;
     private final NoteVersionService noteVersionService;
     private final SpaceMemberMapper spaceMemberMapper;
+    private final NoteLinkService noteLinkService;
 
     /**
      * 角色权限等级
@@ -78,6 +80,9 @@ public class NoteServiceImpl implements NoteService {
 
         noteMapper.insert(note);
         log.info("创建笔记成功，笔记ID：{}", note.getId());
+
+        // 同步双向链接
+        try { noteLinkService.syncNoteLinks(note.getId(), note.getContent(), note.getTitle()); } catch (Exception e) { log.warn("同步笔记链接失败", e); }
 
         return note.getId();
     }
@@ -122,6 +127,9 @@ public class NoteServiceImpl implements NoteService {
 
         // 更新笔记
         noteMapper.updateById(note);
+
+        // 同步双向链接
+        try { noteLinkService.syncNoteLinks(noteId, note.getContent(), note.getTitle()); } catch (Exception e) { log.warn("同步笔记链接失败", e); }
 
         // 检查是否需要自动保存版本
         checkAndAutoSaveVersion(noteId, oldContent);

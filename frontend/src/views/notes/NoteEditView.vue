@@ -43,6 +43,10 @@
           <el-icon><ChatDotRound /></el-icon>
           评论 ({{ commentCount }})
         </el-button>
+        <el-button @click="openBacklinks">
+          <el-icon><Link /></el-icon>
+          反向链接 ({{ backlinks.length }})
+        </el-button>
         <ExportMenu :note-id="noteId" :note-title="noteTitle" />
         <el-button type="primary" @click="showAIAssistant = true">
           <el-icon><ChatDotRound /></el-icon>
@@ -122,6 +126,62 @@
     >
       <CommentPanel v-if="noteId" :note-id="noteId" />
     </el-drawer>
+
+    <!-- 反向链接面板 -->
+    <el-drawer
+      v-model="showBacklinksPanel"
+      title="反向链接"
+      direction="rtl"
+      :size="350"
+    >
+      <div v-if="backlinks.length === 0" style="text-align:center;color:#999;padding:40px 0;">
+        暂无笔记引用此笔记
+      </div>
+      <div
+        v-for="link in backlinks"
+        :key="link.id"
+        class="backlink-item"
+        @click="navigateToNote(link.sourceNoteId)"
+      >
+        <div class="backlink-title">{{ link.sourceTitle }}</div>
+        <div class="backlink-time">{{ formatTime(link.createdAt) }}</div>
+      </div>
+    </el-drawer>
+
+    <!-- [[ 笔记选择器弹出框 -->
+    <div
+      v-if="showLinkSelector"
+      class="link-selector-popup"
+      :style="{ top: linkSelectorPos.top + 'px', left: linkSelectorPos.left + 'px' }"
+    >
+      <div class="link-selector-input">
+        <el-input
+          v-model="linkSearchKeyword"
+          placeholder="搜索笔记标题..."
+          size="small"
+          autofocus
+          @input="handleLinkSearch"
+          @keydown.down.prevent="moveLinkSelection(1)"
+          @keydown.up.prevent="moveLinkSelection(-1)"
+          @keydown.enter.prevent="selectCurrentLink"
+          @keydown.esc.prevent="closeLinkSelector"
+        />
+      </div>
+      <div class="link-selector-list">
+        <div
+          v-for="(item, idx) in linkSearchResults"
+          :key="item.id"
+          :class="['link-selector-item', { active: linkSelectedIndex === idx }]"
+          @click="insertLink(item)"
+          @mouseenter="linkSelectedIndex = idx"
+        >
+          {{ item.title }}
+        </div>
+        <div v-if="linkSearchResults.length === 0 && linkSearchKeyword" class="link-selector-empty">
+          未找到匹配笔记
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -142,6 +202,7 @@ import wsClient, { type WSMessage } from '@/utils/websocket';
 import type { NoteVersion } from '@/types';
 import { getSpaceDetail } from '@/api/space';
 import { getFolderTree } from '@/api/folder';
+import { getBacklinks, searchTitles, type NoteLink } from '@/api/noteLink';
 
 const route = useRoute();
 const router = useRouter();
@@ -162,6 +223,15 @@ const tagInputRef = ref();
 const showAIAssistant = ref(false);
 const showVersionPanel = ref(false);
 const showCommentPanel = ref(false);
+const showBacklinksPanel = ref(false);
+const backlinks = ref<NoteLink[]>([]);
+
+// [[ 笔记选择器
+const showLinkSelector = ref(false);
+const linkSearchKeyword = ref('');
+const linkSearchResults = ref<any[]>([]);
+const linkSelectedIndex = ref(0);
+const linkSelectorPos = ref({ top: 0, left: 0 });
 const commentCount = ref(0);
 const editorMode = ref<'markdown' | 'richtext'>('markdown');
 const spaceName = ref('');
@@ -355,9 +425,102 @@ const handleVersionRestore = (version: NoteVersion) => {
   showSaveStatus('success', '已恢复到版本 #' + version.versionNo);
 };
 
+// 反向链接
+const openBacklinks = async () => {
+  if (!noteId.value) return;
+  try {
+    backlinks.value = await getBacklinks(noteId.value);
+  } catch (e) {
+    console.error('获取反向链接失败', e);
+  }
+  showBacklinksPanel.value = true;
+};
+
+const navigateToNote = (id: number) => {
+  router.push(`/notes/${id}`);
+};
+
+const formatTime = (t: string) => {
+  if (!t) return '';
+  return new Date(t).toLocaleString('zh-CN');
+};
+
+// [[ 笔记选择器
+let linkSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+const handleLinkSearch = () => {
+  if (linkSearchTimer) clearTimeout(linkSearchTimer);
+  linkSearchTimer = setTimeout(async () => {
+    if (!linkSearchKeyword.value.trim()) {
+      linkSearchResults.value = [];
+      return;
+    }
+    try {
+      linkSearchResults.value = await searchTitles(linkSearchKeyword.value.trim());
+      linkSelectedIndex.value = 0;
+    } catch (e) {
+      linkSearchResults.value = [];
+    }
+  }, 300);
+};
+
+const moveLinkSelection = (dir: number) => {
+  const len = linkSearchResults.value.length;
+  if (len === 0) return;
+  linkSelectedIndex.value = (linkSelectedIndex.value + dir + len) % len;
+};
+
+const selectCurrentLink = () => {
+  if (linkSearchResults.value.length > 0 && linkSelectedIndex.value >= 0) {
+    insertLink(linkSearchResults.value[linkSelectedIndex.value]);
+  }
+};
+
+const insertLink = (item: any) => {
+  const content = noteContent.value;
+  // Find the last unclosed [[ in content and replace with [[title]]
+  const lastOpenIdx = content.lastIndexOf('[[');
+  if (lastOpenIdx >= 0) {
+    noteContent.value = content.substring(0, lastOpenIdx) + `[[${item.title}]]` + content.substring(lastOpenIdx + 2);
+  }
+  closeLinkSelector();
+};
+
+const closeLinkSelector = () => {
+  showLinkSelector.value = false;
+  linkSearchKeyword.value = '';
+  linkSearchResults.value = [];
+};
+
+// 监听编辑器输入 [[
+const onEditorKeydown = (e: KeyboardEvent) => {
+  // This is a global listener; the actual [[ detection is handled via content watch
+};
+
+// Watch content for [[ to trigger selector
+let lastContentLength = 0;
+const checkForLinkTrigger = () => {
+  const content = noteContent.value || '';
+  if (content.length >= 2 && content.endsWith('[[')) {
+    showLinkSelector.value = true;
+    linkSearchKeyword.value = '';
+    linkSearchResults.value = [];
+    linkSelectedIndex.value = 0;
+    // Position near the editor area
+    const editorEl = document.querySelector('.vditor') as HTMLElement;
+    if (editorEl) {
+      const rect = editorEl.getBoundingClientRect();
+      linkSelectorPos.value = { top: rect.top + 60, left: rect.left + rect.width / 2 - 150 };
+    } else {
+      linkSelectorPos.value = { top: 200, left: 300 };
+    }
+  }
+};
+
 // 监听内容变化
 watch([noteTitle, noteContent, noteTags], () => {
   handleAutoSave();
+  checkForLinkTrigger();
 }, { deep: true });
 
 // WebSocket 实时协作
@@ -493,6 +656,65 @@ onBeforeUnmount(() => {
       background-color: var(--el-bg-color-page);
       border-bottom: 1px solid var(--el-border-color);
     }
+  }
+}
+
+.backlink-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: var(--el-fill-color-light);
+  }
+
+  .backlink-title {
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .backlink-time {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+  }
+}
+
+.link-selector-popup {
+  position: fixed;
+  z-index: 9999;
+  width: 300px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+
+  .link-selector-input {
+    padding: 8px;
+    border-bottom: 1px solid var(--el-border-color);
+  }
+
+  .link-selector-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .link-selector-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+
+    &:hover, &.active {
+      background-color: var(--el-color-primary-light-9);
+    }
+  }
+
+  .link-selector-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--el-text-color-secondary);
+    font-size: 13px;
   }
 }
 </style>
