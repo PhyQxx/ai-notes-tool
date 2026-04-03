@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -81,7 +82,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
             log.warn("限流触发: type={}, identifier={}, count={}, limit={}", type, identifier, count, limit);
             response.setStatus(429);
             response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write(JSON.toJSONString(Result.error(429, type + "请求过于频繁，每分钟最多" + limit + "次")));
+            response.setHeader("Retry-After", String.valueOf(WINDOW_SECONDS));
+
+            // 构建详细响应
+            Map<String, Object> data = new java.util.LinkedHashMap<>();
+            data.put("retryAfter", WINDOW_SECONDS);
+            data.put("remaining", 0);
+            data.put("limit", limit);
+            data.put("type", type);
+
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("code", 429);
+            result.put("message", type + "请求过于频繁，请等待 " + WINDOW_SECONDS + " 秒后重试");
+            result.put("data", data);
+
+            response.getWriter().write(JSON.toJSONString(result));
             return;
         }
 

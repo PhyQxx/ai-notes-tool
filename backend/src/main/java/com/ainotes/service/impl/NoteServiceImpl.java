@@ -17,6 +17,7 @@ import com.ainotes.service.NoteService;
 import com.ainotes.service.NoteVersionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -41,6 +42,12 @@ public class NoteServiceImpl implements NoteService {
     private final NoteVersionService noteVersionService;
     private final SpaceMemberMapper spaceMemberMapper;
     private final NoteLinkService noteLinkService;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    private static final String NOTE_CACHE_KEY = "note:detail:";
+    private static final long NOTE_CACHE_TTL_MINUTES = 10;
+    private static final String TAG_CLOUD_CACHE_KEY = "tags:cloud:";
+    private static final long TAG_CACHE_TTL_MINUTES = 5;
 
     /**
      * 角色权限等级
@@ -135,6 +142,11 @@ public class NoteServiceImpl implements NoteService {
         checkAndAutoSaveVersion(noteId, oldContent);
 
         log.info("更新笔记成功，笔记ID：{}", noteId);
+
+        // 清除笔记详情缓存
+        evictNoteCache(noteId);
+        // 清除标签云缓存
+        evictTagCloudCache();
     }
 
     /**
@@ -209,10 +221,26 @@ public class NoteServiceImpl implements NoteService {
         note.setDeletedAt(LocalDateTime.now());
         noteMapper.updateById(note);
         log.info("笔记移入回收站，笔记ID：{}", noteId);
+
+        // 清除笔记详情缓存
+        evictNoteCache(noteId);
+        // 清除标签云缓存
+        evictTagCloudCache();
     }
 
     @Override
     public Note getNoteDetail(Long userId, Long noteId) {
+        // 尝试从 Redis 缓存获取
+        String cacheKey = NOTE_CACHE_KEY + noteId;
+        try {
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached instanceof Note) {
+                return (Note) cached;
+            }
+        } catch (Exception e) {
+            log.warn("Redis缓存读取失败，回退到数据库查询", e);
+        }
+
         // 查询笔记
         Note note = noteMapper.selectById(noteId);
         if (note == null) {
@@ -230,6 +258,13 @@ public class NoteServiceImpl implements NoteService {
         // 增加查看次数
         note.setViewCount(note.getViewCount() + 1);
         noteMapper.updateById(note);
+
+        // 写入 Redis 缓存
+        try {
+            redisTemplate.opsForValue().set(cacheKey, note, NOTE_CACHE_TTL_MINUTES, java.util.concurrent.TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("Redis缓存写入失败", e);
+        }
 
         return note;
     }
@@ -656,6 +691,10 @@ public class NoteServiceImpl implements NoteService {
         // 物理删除
         noteMapper.deleteById(noteId);
         log.info("彻底删除笔记，笔记ID：{}", noteId);
+
+        // 清除缓存
+        evictNoteCache(noteId);
+        evictTagCloudCache();
     }
 
     @Override
@@ -669,6 +708,28 @@ public class NoteServiceImpl implements NoteService {
             noteMapper.deleteById(note.getId());
         }
         log.info("清空回收站，用户ID：{}，删除数量：{}", userId, trashNotes.size());
+
+        // 清除标签云缓存
+        evictTagCloudCache();
+    }
+
+    private void evictNoteCache(Long noteId) {
+        try {
+            redisTemplate.delete(NOTE_CACHE_KEY + noteId);
+        } catch (Exception e) {
+            log.warn("清除笔记缓存失败", e);
+        }
+    }
+
+    private void evictTagCloudCache() {
+        try {
+            var keys = redisTemplate.keys(TAG_CLOUD_CACHE_KEY + "*");
+            if (keys != null && !keys.isEmpty()) {
+                redisTemplate.delete(keys);
+            }
+        } catch (Exception e) {
+            log.warn("清除标签云缓存失败", e);
+        }
     }
 
 }

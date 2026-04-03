@@ -80,6 +80,16 @@ service.interceptors.response.use(
       csrfToken = null;
     }
 
+    // 429 限流提示
+    if (response && response.status === 429) {
+      const retryAfter = response.data?.data?.retryAfter || 60;
+      ElMessage.warning({
+        message: response.data?.message || `请求过于频繁，请等待 ${retryAfter} 秒后重试`,
+        duration: Math.min(retryAfter * 1000, 10000),
+      });
+      return Promise.reject(error);
+    }
+
     // 其他错误
     const message = response?.data?.message || error.message || '网络错误';
     ElMessage.error(message);

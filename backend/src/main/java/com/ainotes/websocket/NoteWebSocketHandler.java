@@ -73,6 +73,7 @@ public class NoteWebSocketHandler extends TextWebSocketHandler {
                 case "leave_note" -> handleLeaveNote(userId, json);
                 case "cursor_move" -> handleCursorMove(userId, json);
                 case "content_change" -> handleContentChange(userId, json);
+                case "ping" -> sendMessage(session, Map.of("type", "pong"));
                 default -> log.warn("未知消息类型: {}", type);
             }
         } catch (Exception e) {

@@ -8,11 +8,15 @@ import com.ainotes.mapper.TagColorMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/tags")
 @RequiredArgsConstructor
@@ -20,10 +24,27 @@ public class TagController {
 
     private final NoteMapper noteMapper;
     private final TagColorMapper tagColorMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    private static final String TAG_CLOUD_CACHE_PREFIX = "tags:cloud:";
+    private static final long TAG_CACHE_TTL_MINUTES = 5;
 
     @GetMapping("/cloud")
+    @SuppressWarnings("unchecked")
     public Result<List<Map<String, Object>>> getTagCloud(
             @RequestParam(required = false) Long spaceId) {
+        // 尝试从 Redis 缓存获取
+        String cacheKey = TAG_CLOUD_CACHE_PREFIX + (spaceId != null ? spaceId : "global");
+        try {
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached instanceof List) {
+                return Result.success((List<Map<String, Object>>) cached);
+            }
+        } catch (Exception e) {
+            log.warn("标签云缓存读取失败", e);
+        }
+
+        // 查询数据库
         LambdaQueryWrapper<Note> wrapper = new LambdaQueryWrapper<>();
         wrapper.isNotNull(Note::getTags).ne(Note::getTags, "");
         if (spaceId != null) {
@@ -52,6 +73,13 @@ public class TagController {
                 })
                 .sorted((a, b) -> (int) ((long) b.get("count") - (long) a.get("count")))
                 .collect(Collectors.toList());
+
+        // 写入缓存
+        try {
+            redisTemplate.opsForValue().set(cacheKey, result, TAG_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("标签云缓存写入失败", e);
+        }
 
         return Result.success(result);
     }
