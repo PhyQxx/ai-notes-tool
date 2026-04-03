@@ -274,6 +274,15 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
         String configKey = AI_CONFIG_KEY_PREFIX + userId;
         Map<String, Object> config = (Map<String, Object>) redisTemplate.opsForValue().get(configKey);
 
+        // 默认使用 deepseek
+        if (providerName == null || providerName.isEmpty()) {
+            if (config != null) {
+                providerName = (String) config.getOrDefault("provider", "deepseek");
+            } else {
+                providerName = "deepseek";
+            }
+        }
+
         String apiKey = null;
         if (config != null) {
             if ("deepseek".equalsIgnoreCase(providerName)) {
