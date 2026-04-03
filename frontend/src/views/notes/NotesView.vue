@@ -51,6 +51,11 @@
           <el-icon><Plus /></el-icon>
           新建笔记
         </el-button>
+        <el-button @click="templateDialogRef?.open()">
+          <el-icon><Document /></el-icon>
+          从模板创建
+        </el-button>
+        <TemplateSelectDialog ref="templateDialogRef" @apply="handleTemplateApply" />
       </div>
     </div>
 
@@ -86,6 +91,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoteStore } from '@/stores/note';
 import NoteCard from '@/components/common/NoteCard.vue';
+import TemplateSelectDialog from '@/components/template/TemplateSelectDialog.vue';
 import { fullTextSearch } from '@/api/note';
 import type { Folder } from '@/types';
 
@@ -216,6 +222,28 @@ const handleSort = () => {
 
 const handleNewNote = () => {
   router.push('/notes/new');
+};
+
+const templateDialogRef = ref<InstanceType<typeof TemplateSelectDialog> | null>(null);
+
+const handleTemplateApply = async (content: string) => {
+  // Extract title from first # heading
+  const titleMatch = content.match(/^#\s+(.+)$/m);
+  const title = titleMatch ? titleMatch[1].replace(/\{\{[^}]+\}\}/g, '').trim() : '无标题';
+  try {
+    await noteStore.createNote({
+      title,
+      content,
+      contentType: 'markdown',
+    });
+    // Reload and open the note
+    await fetchInitialNotes();
+    if (notes.value.length > 0) {
+      router.push(`/notes/${notes.value[0].id}`);
+    }
+  } catch (error) {
+    console.error('从模板创建失败:', error);
+  }
 };
 
 const handleOpenNote = (id: number) => {
