@@ -184,3 +184,40 @@ export function getConversationMessages(id: number): Promise<{
 export function clearConversationMessages(id: number): Promise<void> {
   return http.delete(`/ai/conversations/${id}/messages`);
 }
+
+// ==================== AI 辅助写作接口 ====================
+
+/**
+ * AI总结笔记
+ */
+export function aiSummarize(noteId?: number | null, content?: string): Promise<{ data: string }> {
+  return http.post('/ai/assistant/summarize', { noteId, content });
+}
+
+/**
+ * AI生成大纲
+ */
+export function aiOutline(noteId?: number | null, content?: string): Promise<{ data: string }> {
+  return http.post('/ai/assistant/outline', { noteId, content });
+}
+
+/**
+ * AI续写
+ */
+export function aiContinue(content: string): Promise<{ data: string }> {
+  return http.post('/ai/assistant/continue', { content });
+}
+
+/**
+ * AI翻译（中英互译）
+ */
+export function aiTranslate(content: string, targetLang: string): Promise<{ data: string }> {
+  return http.post('/ai/assistant/translate', { content, targetLang });
+}
+
+/**
+ * AI润色
+ */
+export function aiPolish(content: string): Promise<{ data: string }> {
+  return http.post('/ai/assistant/polish', { content });
+}
