@@ -15,6 +15,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * 认证控制器
  *
@@ -65,7 +67,11 @@ public class AuthController {
      */
     @PostMapping("/refresh")
     @Operation(summary = "刷新Token")
-    public Result<LoginResponse> refreshToken(@RequestParam String refreshToken) {
+    public Result<LoginResponse> refreshToken(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return Result.error("refreshToken不能为空");
+        }
         LoginResponse response = authService.refreshToken(refreshToken);
         return Result.success("刷新成功", response);
     }

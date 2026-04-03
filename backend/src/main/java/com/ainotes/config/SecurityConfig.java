@@ -27,13 +27,23 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(request -> {
+                    var config = new org.springframework.web.cors.CorsConfiguration();
+                    config.setAllowedOriginPatterns(java.util.List.of("*"));
+                    config.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE","OPTIONS"));
+                    config.setAllowedHeaders(java.util.List.of("*"));
+                    config.setAllowCredentials(true);
+                    return config;
+                }))
                 .authorizeHttpRequests(authorize -> authorize
                         // 放行认证相关接口
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
                         // 放行Swagger文档
-                        .requestMatchers("/doc.html", "/swagger-resources/**", "/webjars/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/doc.html", "/swagger-resources/**", "/webjars/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         // 放行静态资源
                         .requestMatchers("/static/**", "/uploads/**").permitAll()
+                        // 放行CORS预检
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // 其他请求需要认证
                         .anyRequest().authenticated()
                 )

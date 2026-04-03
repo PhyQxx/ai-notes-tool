@@ -4,7 +4,6 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.ainotes.common.exception.BusinessException;
 import com.ainotes.config.AIConfig;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Component;
@@ -24,7 +23,6 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class GLMProvider implements AIProvider {
 
     private static final String CHAT_COMPLETIONS_URL = "/chat/completions";

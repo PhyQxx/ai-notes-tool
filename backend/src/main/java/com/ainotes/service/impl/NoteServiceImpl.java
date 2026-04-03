@@ -227,7 +227,7 @@ public class NoteServiceImpl implements NoteService {
     public IPage<Note> listNotes(Long userId, NoteQueryRequest query) {
         // 构建查询条件
         LambdaQueryWrapper<Note> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Note::getStatus, 1);
+        // 注意：不手动添加 eq(Note::getStatus, 1)，@TableLogic 已自动处理逻辑删除
 
         // 如果指定了空间ID，查询该空间的笔记
         if (query.getSpaceId() != null && query.getSpaceId() > 0) {
@@ -235,9 +235,9 @@ public class NoteServiceImpl implements NoteService {
             checkSpacePermission(userId, query.getSpaceId(), "viewer");
             queryWrapper.eq(Note::getSpaceId, query.getSpaceId());
         } else {
-            // 查询个人笔记
+            // 查询个人笔记（spaceId为0或null表示个人笔记）
             queryWrapper.eq(Note::getUserId, userId);
-            queryWrapper.eq(Note::getSpaceId, 0); // spaceId为0或null表示个人笔记
+            queryWrapper.and(w -> w.isNull(Note::getSpaceId).or().eq(Note::getSpaceId, 0));
         }
 
         // 关键词搜索（标题、内容、标签）
@@ -334,7 +334,7 @@ public class NoteServiceImpl implements NoteService {
         // 构建查询条件
         LambdaQueryWrapper<Note> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Note::getUserId, userId);
-        queryWrapper.eq(Note::getStatus, 1);
+        // @TableLogic 已自动处理逻辑删除，不需要手动加 status 条件
 
         // 关键词搜索（标题、内容、标签）
         if (StringUtils.hasText(keyword)) {

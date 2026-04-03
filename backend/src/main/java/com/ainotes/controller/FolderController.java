@@ -14,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 文件夹控制器
@@ -80,8 +81,12 @@ public class FolderController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "更新文件夹")
-    public Result<Void> updateFolder(@PathVariable Long id, @RequestParam String name, Authentication authentication) {
+    public Result<Void> updateFolder(@PathVariable Long id, @RequestBody Map<String, String> request, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
+        String name = request.get("name");
+        if (name == null || name.isBlank()) {
+            return Result.error("文件夹名称不能为空");
+        }
         folderService.updateFolder(userId, id, name);
         return Result.success("更新成功", null);
     }

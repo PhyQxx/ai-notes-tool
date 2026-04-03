@@ -1,7 +1,6 @@
 package com.ainotes.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -14,9 +13,8 @@ import lombok.Data;
 public class CreateCommentRequest {
 
     /**
-     * 笔记ID
+     * 笔记ID（由Controller从路径参数设置）
      */
-    @NotNull(message = "笔记ID不能为空")
     private Long noteId;
 
     /**

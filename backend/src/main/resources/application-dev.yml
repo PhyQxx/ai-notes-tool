@@ -2,14 +2,14 @@ spring:
   # Database Configuration
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.31.104:3306/ai_notes?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    url: jdbc:mysql://127.0.0.1:3306/ai_notes?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
     username: root
-    password: root
+    password: 123456
 
   # Redis Configuration
   data:
     redis:
-      host: 192.168.31.104
+      host: 127.0.0.1
       port: 6379
       password:
       database: 0
@@ -23,7 +23,7 @@ spring:
 
 # MinIO Development Configuration
 minio:
-  endpoint: http://192.168.31.104:9000
+  endpoint: http://127.0.0.1:9010
   access-key: minioadmin
   secret-key: minioadmin
   bucket-name: ai-notes-dev
