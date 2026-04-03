@@ -83,6 +83,11 @@ const routes: RouteRecordRaw[] = [
         path: 'graph',
         name: 'Graph',
         component: () => import('@/views/GraphView.vue')
+      },
+      {
+        path: 'audit-logs',
+        name: 'AuditLogs',
+        component: () => import('@/views/AuditLogView.vue')
       }
     ]
   },

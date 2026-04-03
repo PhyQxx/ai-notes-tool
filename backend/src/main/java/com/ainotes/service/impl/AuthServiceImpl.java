@@ -30,6 +30,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final com.ainotes.service.AuditLogService auditLogService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -94,6 +95,8 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(null);
 
         log.info("用户登录成功，用户ID：{}", user.getId());
+
+        auditLogService.log(user.getId(), user.getUsername(), "LOGIN", "user", user.getId(), "用户登录", null);
 
         return LoginResponse.builder()
                 .token(token)

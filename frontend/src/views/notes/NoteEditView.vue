@@ -236,6 +236,7 @@
         </div>
       </div>
     </el-dialog>
+    <AttachmentList :note-id="noteId" />
 </template>
 
 <script setup lang="ts">
@@ -253,6 +254,7 @@ import CommentPanel from '@/components/note/CommentPanel.vue';
 import { createShare, listShares, deleteShare } from '@/api/noteShare';
 import CollabIndicator from '@/components/editor/CollabIndicator.vue';
 import VoiceInput from '@/components/voice/VoiceInput.vue';
+import AttachmentList from '@/components/attachment/AttachmentList.vue';
 import wsClient, { type WSMessage } from '@/utils/websocket';
 import type { NoteVersion } from '@/types';
 import { getSpaceDetail } from '@/api/space';

@@ -65,6 +65,14 @@
           <el-icon><Share /></el-icon>
           <span v-if="!isCollapse">{{ t('nav.knowledgeGraph') }}</span>
         </div>
+        <div
+          class="menu-item"
+          :class="{ active: isActiveMenu('/audit-logs') }"
+          @click="router.push('/audit-logs')"
+        >
+          <el-icon><Memo /></el-icon>
+          <span v-if="!isCollapse">操作日志</span>
+        </div>
       </div>
 
       <div class="sidebar-footer">
@@ -152,7 +160,7 @@ import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ElMessageBox } from 'element-plus';
-import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny, Delete, Share } from '@element-plus/icons-vue';
+import { Fold, Expand, Search, Plus, Setting, SwitchButton, ChatDotRound, FolderOpened, Clock, Star, Moon, Sunny, Delete, Share, Memo } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { useNotificationStore } from '@/stores/notification';

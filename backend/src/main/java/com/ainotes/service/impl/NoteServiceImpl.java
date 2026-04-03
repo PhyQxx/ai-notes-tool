@@ -46,6 +46,7 @@ public class NoteServiceImpl implements NoteService {
     private final SpaceMemberMapper spaceMemberMapper;
     private final NoteLinkService noteLinkService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final com.ainotes.service.AuditLogService auditLogService;
 
     private static final String NOTE_CACHE_KEY = "note:detail:";
     private static final long NOTE_CACHE_TTL_MINUTES = 10;
@@ -94,6 +95,7 @@ public class NoteServiceImpl implements NoteService {
         // 同步双向链接
         try { noteLinkService.syncNoteLinks(note.getId(), note.getContent(), note.getTitle()); } catch (Exception e) { log.warn("同步笔记链接失败", e); }
 
+        auditLogService.log(userId, null, "CREATE_NOTE", "note", note.getId(), "创建笔记: " + note.getTitle(), null);
         return note.getId();
     }
 
@@ -150,6 +152,7 @@ public class NoteServiceImpl implements NoteService {
         evictNoteCache(noteId);
         // 清除标签云缓存
         evictTagCloudCache();
+        auditLogService.log(userId, null, "UPDATE_NOTE", "note", noteId, "更新笔记: " + note.getTitle(), null);
     }
 
     /**
@@ -229,6 +232,7 @@ public class NoteServiceImpl implements NoteService {
         evictNoteCache(noteId);
         // 清除标签云缓存
         evictTagCloudCache();
+        auditLogService.log(userId, null, "DELETE_NOTE", "note", noteId, "删除笔记(软删除): " + note.getTitle(), null);
     }
 
     @Override
