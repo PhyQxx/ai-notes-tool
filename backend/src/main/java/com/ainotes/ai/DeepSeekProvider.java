@@ -35,7 +35,8 @@ public class DeepSeekProvider implements AIProvider {
 
     private static final List<String> SUPPORTED_MODELS = List.of(
             "deepseek-chat",
-            "deepseek-coder"
+            "deepseek-coder",
+            "deepseek-reasoner"
     );
 
     public DeepSeekProvider(AIConfig aiConfig) {

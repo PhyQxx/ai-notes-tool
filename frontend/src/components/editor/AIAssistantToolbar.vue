@@ -180,8 +180,8 @@ onUnmounted(() => {
 }
 
 .ai-toolbar-item:hover {
-  background: #f0f5ff;
-  color: #409eff;
+  background: #EDE9FE;
+  color: #8B5CF6;
 }
 
 .ai-toolbar-icon {

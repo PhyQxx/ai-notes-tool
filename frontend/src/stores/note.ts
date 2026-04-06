@@ -29,7 +29,11 @@ function normalizeNote(raw: any): Note {
     ...raw,
     isFavorite: !!raw.isFavorite,
     isTop: !!raw.isTop,
-    tags: raw.tags || [],
+    tags: raw.tags
+      ? (Array.isArray(raw.tags)
+          ? raw.tags
+          : raw.tags.split(',').filter((s: string) => s.trim() !== ''))
+      : [],
     folderId: raw.folderId || 0,
   };
 }
@@ -68,10 +72,17 @@ export const useNoteStore = defineStore('note', () => {
         isFavorite: params?.isFavorite
       });
       const newNotes = (result.records || []).map(normalizeNote);
+      // Deduplicate by note ID (defensive - prevents backend SQL issues from surfacing as duplicates)
+      const seen = new Set<number>();
+      const uniqueNotes = newNotes.filter((note: Note) => {
+        if (seen.has(note.id)) return false;
+        seen.add(note.id);
+        return true;
+      });
       if (params?.append) {
-        notes.value = [...notes.value, ...newNotes];
+        notes.value = [...notes.value, ...uniqueNotes];
       } else {
-        notes.value = newNotes;
+        notes.value = uniqueNotes;
       }
       total.value = result.total || 0;
       currentPage.value = result.current || result.page || 1;

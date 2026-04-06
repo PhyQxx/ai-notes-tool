@@ -142,4 +142,15 @@ public interface AIService {
      */
     String polish(Long userId, String content);
 
+    /**
+     * 测试AI连接
+     *
+     * @param userId  用户ID
+     * @param provider 提供商名称
+     * @param apiKey  API密钥（可选，为空则使用配置）
+     * @param model   测试用模型
+     * @return 是否连接成功
+     */
+    boolean testConnection(Long userId, String provider, String apiKey, String model);
+
 }

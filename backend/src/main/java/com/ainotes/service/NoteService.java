@@ -81,12 +81,28 @@ public interface NoteService {
     void toggleFavorite(Long userId, Long noteId);
 
     /**
+     * 取消收藏
+     *
+     * @param userId 用户ID
+     * @param noteId 笔记ID
+     */
+    void unfavorite(Long userId, Long noteId);
+
+    /**
      * 置顶/取消置顶
      *
      * @param userId 用户ID
      * @param noteId 笔记ID
      */
     void toggleTop(Long userId, Long noteId);
+
+    /**
+     * 取消置顶
+     *
+     * @param userId 用户ID
+     * @param noteId 笔记ID
+     */
+    void untop(Long userId, Long noteId);
 
     /**
      * 获取回收站列表

@@ -75,7 +75,7 @@ function startRecording() {
   finalTranscript.value = ''
   isRecording.value = true
 
-  recognition.onresult = (event: { results: { isFinal: boolean; transcript: string }[][] }) => {
+  recognition.onresult = (event: { results: { isFinal: boolean; transcript: string }[] }) => {
     let interim = ''
     let final = ''
     for (let i = 0; i < event.results.length; i++) {

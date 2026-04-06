@@ -308,7 +308,18 @@ const handleSubmitReply = async () => {
       if (!parentComment.replies) {
         parentComment.replies = [];
       }
-      parentComment.replies.push(reply);
+      parentComment.replies.push({
+        id: reply as number,
+        noteId: props.noteId,
+        userId: 0,
+        username: '',
+        nickname: '我',
+        avatar: '',
+        parentId: replyTo.value?.id || 0,
+        content: replyContent.value.trim(),
+        createdAt: new Date().toISOString(),
+        replies: []
+      });
     }
 
     replyContent.value = '';

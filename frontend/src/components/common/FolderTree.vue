@@ -8,6 +8,14 @@
     :highlight-current="true"
     @node-click="handleNodeClick"
   >
+    <template #empty-node>
+      <div class="folder-empty">
+        <span class="folder-empty-text">暂无文件夹</span>
+        <el-button size="small" type="primary" link @click="handleCreateRoot">
+          + 新建文件夹
+        </el-button>
+      </div>
+    </template>
     <template #default="{ node, data }">
       <div class="custom-tree-node">
         <span class="node-label">{{ node.label }}</span>
@@ -112,6 +120,14 @@ const handleCommand = (command: string, data: Folder) => {
   }
 };
 
+const handleCreateRoot = () => {
+  dialogTitle.value = '新建文件夹';
+  dialogType.value = 'add';
+  folderName.value = '';
+  currentFolder.value = null;
+  dialogVisible.value = true;
+};
+
 const handleConfirm = async () => {
   if (!folderName.value.trim()) {
     ElMessage.warning('请输入文件夹名称');
@@ -193,6 +209,20 @@ const handleDeleteFolder = async (folder: Folder) => {
     .node-actions {
       opacity: 1;
     }
+  }
+}
+
+.folder-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0;
+  width: 100%;
+
+  .folder-empty-text {
+    font-size: 12px;
+    color: var(--text-placeholder);
   }
 }
 </style>

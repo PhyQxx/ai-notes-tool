@@ -2,7 +2,10 @@ package com.ainotes.service.impl;
 
 import com.ainotes.ai.AIProvider;
 import com.ainotes.ai.AIProviderFactory;
+import com.ainotes.ai.DeepSeekProvider;
+import com.ainotes.ai.GLMProvider;
 import com.ainotes.common.exception.BusinessException;
+import com.ainotes.config.AIConfig;
 import com.ainotes.dto.request.AIChatRequest;
 import com.ainotes.dto.request.AIConfigUpdateRequest;
 import com.ainotes.dto.request.AIGenerateRequest;
@@ -49,6 +52,7 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
     private final NoteService noteService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final AIChatMessageService chatMessageService;
+    private final AIConfig aiConfig;
 
     private static final String AI_CONFIG_KEY_PREFIX = "ai:config:";
     private static final Duration CONFIG_CACHE_TTL = Duration.ofHours(1);
@@ -63,6 +67,9 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
         AIProvider provider = getProviderWithApiKey(userId, request.getProvider());
         AIConversation conversation = getOrCreateConversation(userId, request);
 
+        // Track if this is a new conversation (no prior messages) so we can set a proper title
+        boolean isNewConversation = conversation.getMessageList() == null || conversation.getMessageList().isEmpty();
+
         // Save user message
         chatMessageService.saveMessage(conversation.getId(), "user", request.getMessage());
 
@@ -74,11 +81,18 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
         // Save assistant message
         chatMessageService.saveMessage(conversation.getId(), "assistant", aiResponse);
 
+        // Set conversation title for new conversations
+        if (isNewConversation) {
+            String title = generateConversationTitle(request.getMessage());
+            conversation.setTitle(title);
+            updateById(conversation);
+        }
+
         AIChatResponse response = new AIChatResponse();
         response.setConversationId(conversation.getId());
         response.setMessage(aiResponse);
         response.setRole("assistant");
-        response.setTitle(conversation.getMessageList().isEmpty() ? null : generateConversationTitle(request.getMessage()));
+        response.setTitle(conversation.getTitle());
 
         return response;
     }
@@ -228,6 +242,24 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
             model = (String) config.getOrDefault("model", "deepseek-chat");
         }
 
+        // Check if user has their own API key configured
+        boolean hasUserKey = config != null && (
+            ("deepseek".equalsIgnoreCase(provider) && config.containsKey("deepseekApiKey") && !String.valueOf(config.get("deepseekApiKey")).isEmpty()) ||
+            ("glm".equalsIgnoreCase(provider) && config.containsKey("glmApiKey") && !String.valueOf(config.get("glmApiKey")).isEmpty())
+        );
+
+        // Check global fallback key
+        boolean hasGlobalKey = false;
+        if ("deepseek".equalsIgnoreCase(provider)) {
+            String globalKey = aiConfig.getDeepseek().getApiKey();
+            hasGlobalKey = globalKey != null && !globalKey.isEmpty();
+        } else if ("glm".equalsIgnoreCase(provider)) {
+            String globalKey = aiConfig.getGlm().getApiKey();
+            hasGlobalKey = globalKey != null && !globalKey.isEmpty();
+        }
+
+        boolean hasApiKey = hasUserKey || hasGlobalKey;
+
         // 获取提供商信息
         AIProvider currentProvider = providerFactory.getProvider(provider);
         List<AIConfigResponse.ProviderInfo> providers = providerFactory.getProviderInfos();
@@ -237,6 +269,7 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
                 .model(model)
                 .providers(providers)
                 .models(currentProvider.getSupportedModels())
+                .hasApiKey(hasApiKey)
                 .build();
     }
 
@@ -269,6 +302,7 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
 
     /**
      * 获取AI Provider（带API Key）
+     * 优先级：用户Redis配置 > 全局环境变量
      */
     private AIProvider getProviderWithApiKey(Long userId, String providerName) {
         String configKey = AI_CONFIG_KEY_PREFIX + userId;
@@ -290,6 +324,20 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
             } else if ("glm".equalsIgnoreCase(providerName)) {
                 apiKey = (String) config.get("glmApiKey");
             }
+        }
+
+        // Fallback to global API key if user hasn't configured their own
+        if ((apiKey == null || apiKey.isEmpty())) {
+            if ("deepseek".equalsIgnoreCase(providerName)) {
+                apiKey = aiConfig.getDeepseek().getApiKey();
+            } else if ("glm".equalsIgnoreCase(providerName)) {
+                apiKey = aiConfig.getGlm().getApiKey();
+            }
+        }
+
+        // Check if we have a valid API key
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new BusinessException("请先在设置页配置 DeepSeek API Key，访问 https://platform.deepseek.com 申请");
         }
 
         return providerFactory.getProvider(providerName, apiKey);
@@ -518,6 +566,30 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
         messages.add(Map.of("role", "system", "content", systemPrompt));
         messages.add(Map.of("role", "user", "content", userContent));
         return provider.chat(provider.getDefaultModel(), messages);
+    }
+
+    @Override
+    public boolean testConnection(Long userId, String providerName, String apiKey, String model) {
+        try {
+            AIProvider provider = providerFactory.getProvider(providerName);
+            // Use provided apiKey or fall back to configured one
+            if (apiKey != null && !apiKey.isEmpty()) {
+                if (provider instanceof DeepSeekProvider) {
+                    ((DeepSeekProvider) provider).setApiKey(apiKey);
+                } else if (provider instanceof GLMProvider) {
+                    ((GLMProvider) provider).setApiKey(apiKey);
+                }
+            }
+            // Send a simple test message
+            List<Map<String, String>> messages = List.of(
+                Map.of("role", "user", "content", "Hi")
+            );
+            provider.chat(model != null ? model : provider.getDefaultModel(), messages);
+            return true;
+        } catch (Exception e) {
+            log.warn("AI连接测试失败: {}", e.getMessage());
+            return false;
+        }
     }
 
 }

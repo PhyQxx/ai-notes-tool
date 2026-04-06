@@ -125,6 +125,9 @@
                 placeholder="请输入DeepSeek API Key"
                 show-password
               />
+              <div class="ai-hint">
+                免费API Key，前往 <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a> 注册申请
+              </div>
             </el-form-item>
 
             <el-form-item label="GLM API Key">
@@ -148,6 +151,15 @@
             </el-form-item>
 
             <el-form-item>
+              <div class="api-key-status" :class="aiConfig.hasApiKey ? 'configured' : 'missing'">
+                <el-icon v-if="aiConfig.hasApiKey"><CircleCheckFilled /></el-icon>
+                <el-icon v-else><CircleCloseFilled /></el-icon>
+                <span v-if="aiConfig.hasApiKey">已配置 API Key</span>
+                <span v-else>未配置 API Key，请先填写上方表单</span>
+              </div>
+            </el-form-item>
+
+            <el-form-item>
               <el-button type="primary" :loading="saving" @click="handleSaveAIConfig">
                 保存配置
               </el-button>
@@ -168,6 +180,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { User, Lock, Brush, Monitor, CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
@@ -176,6 +189,7 @@ import { updateProfile } from '@/api/auth';
 
 const authStore = useAuthStore();
 const aiStore = useAIStore();
+const route = useRoute();
 
 const activeTab = ref('profile');
 const saving = ref(false);
@@ -188,7 +202,8 @@ const aiConfig = reactive({
   provider: 'deepseek',
   model: 'deepseek-chat',
   deepseekApiKey: '',
-  glmApiKey: ''
+  glmApiKey: '',
+  hasApiKey: false
 });
 
 const currentModels = computed(() => {
@@ -312,11 +327,31 @@ const handleTestAIConfig = async () => {
   }
 
   testing.value = true;
+  aiConnected.value = false;
+  tested.value = false;
   try {
-    // TODO: 调用测试API连接的接口
-    aiConnected.value = true;
+    const testProvider = aiConfig.provider;
+    const testApiKey = testProvider === 'deepseek' ? aiConfig.deepseekApiKey : aiConfig.glmApiKey;
+    const res = await fetch('/api/ai/config/test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        provider: testProvider,
+        apiKey: testApiKey,
+        model: aiConfig.model
+      })
+    });
+    const data = await res.json();
+    aiConnected.value = data.success && data.data?.success;
     tested.value = true;
-    ElMessage.success('API连接测试成功');
+    if (aiConnected.value) {
+      ElMessage.success('API连接测试成功 ✓');
+    } else {
+      ElMessage.error('API连接测试失败，请检查Key和网络');
+    }
   } catch (error: any) {
     aiConnected.value = false;
     tested.value = true;
@@ -341,8 +376,15 @@ onMounted(async () => {
     aiConfig.model = aiStore.config.model;
     aiConfig.deepseekApiKey = aiStore.config.deepseekApiKey || '';
     aiConfig.glmApiKey = aiStore.config.glmApiKey || '';
+    aiConfig.hasApiKey = aiStore.config.hasApiKey || false;
   } catch (error) {
     console.error('加载AI配置失败:', error);
+  }
+
+  // If navigated from chat with ?tab=ai, switch to AI tab
+  const tab = route.query.tab as string;
+  if (tab === 'ai') {
+    activeTab.value = 'ai';
   }
 });
 </script>
@@ -375,6 +417,35 @@ onMounted(async () => {
     margin-left: 8px;
     &--success { color: var(--nt-success); }
     &--error { color: var(--nt-danger); }
+  }
+
+  .ai-hint {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    margin-top: 6px;
+    a {
+      color: var(--el-color-primary);
+      text-decoration: none;
+      &:hover { text-decoration: underline; }
+    }
+  }
+
+  .api-key-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: fit-content;
+    &.configured {
+      color: var(--nt-success);
+      background-color: rgba(103, 194, 58, 0.1);
+    }
+    &.missing {
+      color: var(--el-color-warning);
+      background-color: rgba(230, 162, 60, 0.1);
+    }
   }
 }
 </style>

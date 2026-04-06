@@ -58,19 +58,23 @@
   --gray-900: #212121;
 
   // ===== 4. 语义色 =====
-  --text-primary: #1D2129;
+  --text-primary: #333333;
   --text-regular: #4E5969;
-  --text-secondary: #86909C;
-  --text-placeholder: #C9CDD4;
-  --text-disabled: #C9CDD4;
+  --text-secondary: #666666;
+  --text-placeholder: #999999;
+  --text-disabled: #BDBDBD;
+  --text-strong: #212121;
 
-  --bg-page: #F2F3F5;
+  --bg-page: #F5F7FA;
   --bg-card: #FFFFFF;
+  --bg-white: #FFFFFF;
   --bg-sidebar: #FFFFFF;
   --bg-header: #FFFFFF;
   --bg-hover: #F2F3F5;
   --bg-active: #E8F3FF;
   --bg-overlay: rgba(0, 0, 0, 0.5);
+  --card-hover: #F8FAFF;
+  --card-selected: #EFF3FF;
 
   // ===== 5. Element Plus 变量覆盖 =====
   --el-color-primary: var(--brand-primary);
@@ -126,6 +130,18 @@
   --el-border-radius-round: 20px;
   --el-border-radius-circle: 100%;
 
+  // ===== 输入框占位符 - WCAG AA 对比度合规 =====
+  --el-input-placeholder-text-color: #999999;
+
+  // ===== AI 辅助色 =====
+  --ai-purple: #8B5CF6;
+  --ai-purple-light: #EDE9FE;
+  --ai-purple-dark: #7C3AED;
+
+  // ===== 品牌色卡片阴影（带品牌微调） =====
+  --shadow-brand: 0 4px 12px rgba(91, 127, 255, 0.08);
+  --shadow-brand-hover: 0 6px 16px rgba(91, 127, 255, 0.12);
+
   // ===== 6. 字体层级 =====
   --font-size-h1: 28px;
   --font-size-h2: 24px;
@@ -166,7 +182,7 @@
   // ===== 9. 阴影层级 =====
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(91, 127, 255, 0.08);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
 
@@ -185,6 +201,47 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  // ===== 11. 统一别名 (nt-* = notes-tool 专用，与 el-* 兼容) =====
+  --nt-bg-elevated: var(--bg-card);
+  --nt-bg-page: var(--bg-page);
+  --nt-bg-sidebar: var(--bg-sidebar);
+  --nt-bg-header: var(--bg-header);
+  --nt-border-default: var(--el-border-color);
+  --nt-border-light: var(--el-border-color-light);
+  --nt-text-primary: var(--el-text-color-primary);
+  --nt-text-secondary: var(--el-text-color-secondary);
+  --nt-text-tertiary: var(--el-text-color-placeholder);
+  --nt-text-disabled: var(--el-text-color-disabled);
+  --nt-radius-lg: var(--radius-lg);
+  --nt-radius-md: var(--radius-md);
+  --nt-radius-sm: var(--radius-sm);
+  --nt-radius-xl: var(--radius-xl);
+  --nt-radius-full: var(--radius-full);
+  --nt-spacing-xs: var(--space-1);
+  --nt-spacing-sm: var(--space-2);
+  --nt-spacing-md: var(--space-4);
+  --nt-spacing-lg: var(--space-6);
+  --nt-spacing-xl: var(--space-8);
+  --nt-spacing-2xl: var(--space-10);
+  --nt-primary: var(--brand-primary);
+  --nt-primary-bg: var(--brand-primary-bg);
+  --nt-primary-border: var(--brand-primary-border);
+  --nt-primary-light: var(--brand-primary-light-1);
+  --nt-danger: var(--color-danger);
+  --nt-danger-bg: var(--color-danger-bg);
+  --nt-danger-border: var(--color-danger-border);
+  --nt-success: var(--color-success);
+  --nt-success-bg: var(--color-success-bg);
+  --nt-success-border: var(--color-success-border);
+  --nt-warning: var(--color-warning);
+  --nt-warning-bg: var(--color-warning-bg);
+  --nt-info: var(--color-info);
+  --nt-info-bg: var(--color-info-bg);
+  --nt-shadow-sm: var(--shadow-sm);
+  --nt-shadow-md: var(--shadow-md);
+  --nt-shadow-lg: var(--shadow-lg);
+  --nt-shadow-xl: var(--shadow-xl);
 }
 
 // ===== 暗色模式全覆盖 =====
@@ -232,56 +289,56 @@ html.dark {
   --color-info-bg: rgba(91, 127, 255, 0.1);
   --color-info-border: rgba(91, 127, 255, 0.35);
 
-  // 中性色 - 暗色模式
-  --gray-50: #1D1D1D;
-  --gray-100: #262626;
-  --gray-200: #303030;
-  --gray-300: #434343;
-  --gray-400: #595959;
+  // 中性色 - 暗色模式（与控制台风格统一）
+  --gray-50: #1A1A1A;
+  --gray-100: #252525;
+  --gray-200: #2E2E2E;
+  --gray-300: #3D3D3D;
+  --gray-400: #5A5A5A;
   --gray-500: #737373;
   --gray-600: #8C8C8C;
   --gray-700: #A6A6A6;
   --gray-800: #BFBFBF;
   --gray-900: #D9D9D9;
 
-  // 语义色 - 暗色模式
-  --text-primary: #FFFFFFD9;
-  --text-regular: #FFFFFFA6;
-  --text-secondary: #FFFFFF73;
-  --text-placeholder: #FFFFFF40;
-  --text-disabled: #FFFFFF26;
+  // 语义色 - 暗色模式（与控制台风格统一）
+  --text-primary: #E5EAF3;
+  --text-regular: #CFD3DC;
+  --text-secondary: #A3A6AD;
+  --text-placeholder: #8D9095;
+  --text-disabled: #5c5e66;
 
-  --bg-page: #0E0E0E;
-  --bg-card: #1A1A1A;
+  --bg-page: #0D0D0D;
+  --bg-card: #181818;
   --bg-sidebar: #141414;
-  --bg-header: #1A1A1A;
-  --bg-hover: #2A2A2A;
+  --bg-header: #181818;
+  --bg-hover: #252525;
   --bg-active: rgba(91, 127, 255, 0.15);
   --bg-overlay: rgba(0, 0, 0, 0.7);
 
-  // Element Plus 暗色覆盖
-  --el-color-white: #1A1A1A;
-  --el-bg-color: #1A1A1A;
+  // Element Plus 暗色覆盖（与控制台风格统一）
+  --el-color-white: #181818;
+  --el-bg-color: #181818;
   --el-bg-color-overlay: #1D1D1D;
-  --el-bg-color-page: #0E0E0E;
-  --el-text-color-primary: #FFFFFFD9;
-  --el-text-color-regular: #FFFFFFA6;
-  --el-text-color-secondary: #FFFFFF73;
-  --el-text-color-placeholder: #FFFFFF40;
-  --el-text-color-disabled: #FFFFFF26;
-  --el-border-color: #434343;
-  --el-border-color-light: #303030;
-  --el-border-color-lighter: #262626;
-  --el-border-color-extra-light: #1D1D1D;
-  --el-border-color-dark: #595959;
+  --el-bg-color-page: #0D0D0D;
+  --el-text-color-primary: #E5EAF3;
+  --el-text-color-regular: #CFD3DC;
+  --el-text-color-secondary: #A3A6AD;
+  --el-text-color-placeholder: #8D9095;
+  --el-text-color-disabled: #5c5e66;
+  --el-border-color: #3D3D3D;
+  --el-border-color-light: #2E2E2E;
+  --el-border-color-lighter: #252525;
+  --el-border-color-extra-light: #1A1A1A;
+  --el-border-color-dark: #5A5A5A;
   --el-border-color-darker: #737373;
-  --el-fill-color: #262626;
+  --el-fill-color: #252525;
   --el-fill-color-light: #1D1D1D;
-  --el-fill-color-lighter: #171717;
+  --el-fill-color-lighter: #181818;
   --el-fill-color-extra-light: #141414;
-  --el-fill-color-dark: #303030;
-  --el-fill-color-darker: #434343;
-  --el-fill-color-blank: #1A1A1A;
+  --el-fill-color-dark: #2E2E2E;
+  --el-fill-color-darker: #3D3D3D;
+  --el-fill-color-blank: #181818;
   --el-box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, .36), 0px 8px 20px rgba(0, 0, 0, .72);
   --el-box-shadow-light: 0px 0px 12px rgba(0, 0, 0, .72);
   --el-box-shadow-lighter: 0px 0px 6px rgba(0, 0, 0, .72);

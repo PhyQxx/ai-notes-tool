@@ -179,6 +179,23 @@ public class AIController {
     }
 
     /**
+     * 测试AI配置（发送一个简单请求验证API Key有效）
+     *
+     * @param request 测试请求（包含provider和apiKey）
+     * @return 测试结果
+     */
+    @PostMapping("/config/test")
+    @Operation(summary = "测试AI配置连接")
+    public Result<Map<String, Object>> testConfig(@RequestBody Map<String, Object> request, Authentication authentication) {
+        String provider = (String) request.getOrDefault("provider", "deepseek");
+        String apiKey = (String) request.get("apiKey");
+        String model = (String) request.getOrDefault("model", "deepseek-chat");
+        Long userId = (Long) authentication.getPrincipal();
+        boolean success = aiService.testConnection(userId, provider, apiKey, model);
+        return Result.success(Map.of("success", success, "message", success ? "连接成功" : "连接失败"));
+    }
+
+    /**
      * 获取可用的提供商列表
      *
      * @return 提供商列表

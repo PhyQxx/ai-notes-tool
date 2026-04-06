@@ -551,6 +551,29 @@ public class NoteServiceImpl implements NoteService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void unfavorite(Long userId, Long noteId) {
+        // 查询笔记
+        Note note = noteMapper.selectById(noteId);
+        if (note == null) {
+            throw new BusinessException("笔记不存在");
+        }
+
+        // 检查权限
+        checkNotePermission(userId, note);
+
+        // 校验状态
+        if (note.getStatus() == 0) {
+            throw new BusinessException("笔记已被删除");
+        }
+
+        // 强制取消收藏
+        note.setIsFavorite(0);
+        noteMapper.updateById(note);
+        log.info("取消笔记收藏，笔记ID：{}，操作人：{}", noteId, userId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void toggleTop(Long userId, Long noteId) {
         // 查询笔记
         Note note = noteMapper.selectById(noteId);
@@ -570,6 +593,21 @@ public class NoteServiceImpl implements NoteService {
         note.setIsTop(note.getIsTop() == 1 ? 0 : 1);
         noteMapper.updateById(note);
         log.info("切换笔记置顶状态，笔记ID：{}，置顶状态：{}", noteId, note.getIsTop());
+    }
+
+    @Override
+    public void untop(Long userId, Long noteId) {
+        Note note = noteMapper.selectById(noteId);
+        if (note == null) {
+            throw new BusinessException("笔记不存在");
+        }
+        checkNotePermission(userId, note);
+        if (note.getStatus() == 0) {
+            throw new BusinessException("笔记已被删除");
+        }
+        note.setIsTop(0);
+        noteMapper.updateById(note);
+        log.info("取消笔记置顶，笔记ID：{}，操作人：{}", noteId, userId);
     }
 
     /**

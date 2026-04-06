@@ -95,7 +95,7 @@
               <el-avatar v-if="msg.role === 'user'" :size="36" :src="userAvatar">
                 {{ user?.nickname?.charAt(0) || 'U' }}
               </el-avatar>
-              <el-avatar v-else :size="36" :style="{ backgroundColor: '#67c23a' }">
+              <el-avatar v-else :size="36" :style="{ backgroundColor: '#8B5CF6' }">
                 <el-icon><ChatDotRound /></el-icon>
               </el-avatar>
             </div>
@@ -115,7 +115,7 @@
           <!-- 流式输出 -->
           <div v-if="aiStore.isStreaming" class="message assistant streaming">
             <div class="message-avatar">
-              <el-avatar :size="36" :style="{ backgroundColor: '#67c23a' }">
+              <el-avatar :size="36" :style="{ backgroundColor: '#8B5CF6' }">
                 <el-icon><ChatDotRound /></el-icon>
               </el-avatar>
             </div>
@@ -250,6 +250,18 @@ const handleSend = async () => {
     return;
   }
 
+  // Check API key before sending
+  if (!aiStore.config.hasApiKey) {
+    ElMessage.warning({
+      message: '请先在设置页配置 DeepSeek API Key',
+      duration: 5000,
+      onClose: () => {
+        router.push({ name: 'settings', query: { tab: 'ai' } });
+      }
+    });
+    return;
+  }
+
   const content = inputMessage.value.trim();
   inputMessage.value = '';
 
@@ -259,9 +271,14 @@ const handleSend = async () => {
     // 滚动到底部
     await nextTick();
     scrollToBottom();
-  } catch (error) {
+  } catch (error: any) {
     console.error('发送消息失败:', error);
-    ElMessage.error('发送失败，请稍后重试');
+    if (error.message === 'NO_API_KEY') {
+      ElMessage.warning('请先在设置页配置 DeepSeek API Key');
+      router.push({ name: 'settings', query: { tab: 'ai' } });
+    } else {
+      ElMessage.error('发送失败，请稍后重试');
+    }
   }
 };
 
@@ -597,12 +614,12 @@ onMounted(async () => {
         &.assistant {
           .message-content {
             .message-text {
-              background-color: var(--nt-bg-secondary);
+              background-color: var(--ai-purple-light);
               color: var(--nt-text-primary);
               border-radius: var(--nt-radius-lg) var(--nt-radius-lg) var(--nt-radius-lg) var(--nt-radius-sm);
 
               :deep(pre) {
-                background-color: var(--nt-bg-tertiary);
+                background-color: rgba(139, 92, 246, 0.1);
                 border-radius: var(--nt-radius-md);
                 padding: 12px;
                 margin: 8px 0;
@@ -617,7 +634,7 @@ onMounted(async () => {
 
             &.streaming {
               .message-text {
-                background-color: var(--nt-bg-tertiary);
+                background-color: rgba(139, 92, 246, 0.15);
               }
             }
           }
@@ -633,6 +650,10 @@ onMounted(async () => {
       :deep(.el-textarea__inner) {
         resize: none;
         font-size: 14px;
+
+        &:focus {
+          box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15) !important;
+        }
       }
 
       .input-footer {

@@ -50,7 +50,7 @@ public class AIConfig {
         /**
          * 支持的模型列表
          */
-        private List<String> models = List.of("deepseek-chat", "deepseek-coder");
+        private List<String> models = List.of("deepseek-chat", "deepseek-coder", "deepseek-reasoner");
     }
 
     /**

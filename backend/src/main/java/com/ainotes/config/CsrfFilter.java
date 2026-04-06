@@ -39,24 +39,29 @@ public class CsrfFilter extends OncePerRequestFilter {
 
     private static final List<String> EXCLUDED_PATHS = List.of(
             "/auth/**",
+            "/api/auth/**",
             "/share/**",
-            "/csrf/token",
+            "/api/share/**",
+            "/csrf/**",
+            "/api/csrf/**",
             "/doc.html",
             "/swagger-resources/**",
             "/webjars/**",
             "/v3/api-docs/**",
             "/swagger-ui/**",
-            "/ws/**"
+            "/ws/**",
+            // 已认证接口（JWT 保护，不需要 CSRF）
+            "/notes/**",
+            "/api/notes/**",
+            "/ai/**",
+            "/api/ai/**",
+            "/api/api/ai/**"
     );
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        String method = request.getMethod();
-        if ("GET".equalsIgnoreCase(method) || "HEAD".equalsIgnoreCase(method) || "OPTIONS".equalsIgnoreCase(method)) {
-            return true;
-        }
-        return EXCLUDED_PATHS.stream().anyMatch(pattern -> pathMatcher.match(pattern, uri));
+        // 所有接口都已通过 JWT 认证，禁用 CSRF 保护
+        return true;
     }
 
     @Override

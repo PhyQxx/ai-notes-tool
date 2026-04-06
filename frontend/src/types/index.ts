@@ -39,6 +39,7 @@ export interface Note {
   tags: string[];
   isFavorite: boolean;
   isTop: boolean;
+  spaceId?: number;
   viewCount: number;
   createdAt: string;
   updatedAt: string;
@@ -89,11 +90,13 @@ export interface AIConfig {
   model: string;
   deepseekApiKey?: string;
   glmApiKey?: string;
+  hasApiKey?: boolean;
 }
 
 export interface AIProviderInfo {
   name: string;
-  label: string;
+  displayName: string;
+  defaultModel: string;
   models: string[];
 }
 
@@ -103,6 +106,8 @@ export interface PageResult<T> {
   total: number;
   page: number;
   size: number;
+  current?: number;
+  sortBy?: string;
 }
 
 export interface ApiResponse<T> {

@@ -40,6 +40,11 @@ public class AIConfigResponse {
     private List<String> models;
 
     /**
+     * 是否已配置API Key（用户个人配置或全局配置）
+     */
+    private boolean hasApiKey;
+
+    /**
      * 提供商信息
      */
     @Data

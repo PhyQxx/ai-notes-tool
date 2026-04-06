@@ -5,30 +5,6 @@
         <h3 v-if="mode === 'recent'" class="mode-title">最近编辑</h3>
         <h3 v-else-if="mode === 'favorites'" class="mode-title">收藏笔记</h3>
 
-        <el-input
-          v-model="searchKeyword"
-          placeholder="搜索笔记..."
-          clearable
-          style="width: 300px"
-          @keyup.enter="handleSearch"
-          @clear="handleClearSearch"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-
-        <el-select v-model="searchScope" placeholder="搜索范围" style="width: 120px">
-          <el-option label="全部" value="all" />
-          <el-option label="标题" value="title" />
-          <el-option label="内容" value="content" />
-        </el-select>
-
-        <el-button @click="handleSearch">
-          <el-icon><Search /></el-icon>
-          搜索
-        </el-button>
-
         <el-select v-model="folderFilter" placeholder="文件夹" style="width: 150px" clearable @change="handleFilter">
           <el-option label="全部" :value="0" />
           <el-option
@@ -47,10 +23,6 @@
       </div>
 
       <div class="toolbar-right">
-        <el-button type="primary" @click="handleNewNote">
-          <el-icon><Plus /></el-icon>
-          新建笔记
-        </el-button>
         <el-button @click="templateDialogRef?.open()">
           <el-icon><Document /></el-icon>
           从模板创建
@@ -117,22 +89,19 @@
 
     <el-empty v-else-if="tagFilteredNotes.length === 0" description="暂无笔记" />
 
-    <div v-else class="notes-list">
-      <el-card
+    <div v-else class="note-grid">
+      <div
         v-for="note in tagFilteredNotes"
         :key="note.id"
         class="note-card"
-        shadow="hover"
+        :class="{ 'note-card--selected': selectedNoteIds.includes(note.id) }"
         @click="handleOpenNote(note.id)"
       >
-        <el-checkbox
-          class="note-checkbox"
-          :model-value="selectedNoteIds.includes(note.id)"
-          @change="(val: boolean) => toggleNoteSelect(note.id, val)"
-          @click.stop
+        <NoteCard
+          :note="note"
+          @toggle-favorite="handleToggleFavorite(note.id)"
         />
-        <NoteCard :note="note" @toggle-favorite="handleToggleFavorite(note.id)" />
-      </el-card>
+      </div>
     </div>
 
     <div v-if="loadingMore" class="load-more">
@@ -255,8 +224,21 @@ const handleBatchDelete = async () => {
 
 // Filter displayNotes by selected tags
 const tagFilteredNotes = computed(() => {
-  if (selectedTags.value.length === 0) return displayNotes.value;
-  return displayNotes.value.filter(note => {
+  let notesToFilter = displayNotes.value;
+  if (selectedTags.value.length === 0) {
+    // Deduplicate by note ID
+    const seen = new Map<number, boolean>();
+    return notesToFilter.filter(note => {
+      if (seen.has(note.id)) return false;
+      seen.set(note.id, true);
+      return true;
+    });
+  }
+  // Filter by tags and deduplicate
+  const seen = new Map<number, boolean>();
+  return notesToFilter.filter(note => {
+    if (seen.has(note.id)) return false;
+    seen.set(note.id, true);
     const noteTags = Array.isArray(note.tags) ? note.tags : (note.tags ? note.tags.split(',').map((s: string) => s.trim()) : []);
     return selectedTags.value.every(t => noteTags.includes(t));
   });
@@ -428,11 +410,11 @@ onMounted(async () => {
   height: 100%;
   overflow-y: auto;
 
-  .toolbar {
+  .page-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-6);
+    align-items: center;
+    margin-bottom: 20px;
     flex-wrap: wrap;
     gap: var(--space-3);
     position: sticky;
@@ -440,6 +422,22 @@ onMounted(async () => {
     z-index: 10;
     background-color: var(--bg-page);
     padding: var(--space-3) 0;
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-strong);
+      margin: 0;
+    }
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: var(--space-3);
 
     .toolbar-left {
       display: flex;
@@ -449,11 +447,53 @@ onMounted(async () => {
 
       .mode-title {
         margin: 0;
-        font-size: var(--font-size-h3);
-        font-weight: var(--font-weight-semibold);
-        color: var(--text-primary);
-        margin-right: var(--space-2);
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--text-strong);
       }
+    }
+
+    // 搜索框 placeholder 对比度
+    :deep(.el-input__inner) {
+      &::placeholder {
+        color: var(--text-placeholder) !important;
+      }
+    }
+  }
+
+  .btn-new {
+    height: 36px;
+    padding: 0 16px;
+    background: var(--brand-primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &:hover {
+      background: var(--brand-primary-light-1);
+    }
+  }
+
+  .btn-secondary {
+    height: 36px;
+    padding: 0 14px;
+    background: var(--bg-white);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bg-page);
     }
   }
 
@@ -462,29 +502,22 @@ onMounted(async () => {
     align-items: center;
     justify-content: center;
     padding: 60px 0;
-    color: var(--el-text-color-secondary);
+    color: var(--text-secondary);
   }
 
-  .notes-list {
+  .note-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: var(--space-5);
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+    align-content: start;
 
     .note-card {
       cursor: pointer;
-      border-radius: var(--radius-lg);
-      transition: all var(--duration-fast) var(--ease-default);
-      border: 1px solid var(--el-border-color-lighter);
-
-      &:hover {
-        transform: translateY(-4px);
-        border-color: var(--brand-primary);
-        box-shadow: var(--shadow-md);
-      }
+      animation: slideUp var(--duration-normal) var(--ease-out) both;
 
       @for $i from 1 through 20 {
         &:nth-child(#{$i}) {
-          animation: slideUp var(--duration-normal) var(--ease-out) #{$i * 30}ms both;
+          animation-delay: #{$i * 30}ms;
         }
       }
     }
@@ -495,12 +528,13 @@ onMounted(async () => {
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    padding: var(--space-6) 0;
+    padding: var(--space-5) 0 var(--space-3);
     color: var(--text-secondary);
     font-size: var(--font-size-body);
 
     &.no-more {
       color: var(--text-placeholder);
+      padding-top: var(--space-3);
     }
   }
 
@@ -514,17 +548,6 @@ onMounted(async () => {
     margin-bottom: var(--space-4);
     font-size: var(--font-size-body);
     border: 1px solid var(--brand-primary-border);
-  }
-
-  .note-card {
-    position: relative;
-
-    .note-checkbox {
-      position: absolute;
-      top: var(--space-3);
-      right: var(--space-3);
-      z-index: 2;
-    }
   }
 }
 

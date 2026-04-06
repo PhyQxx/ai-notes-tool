@@ -3,7 +3,7 @@
     <!-- Mobile sidebar overlay -->
     <div v-if="sidebarVisible" class="sidebar-overlay" @click="sidebarVisible = false" />
     <el-aside :width="isCollapse ? '64px' : '240px'" :class="['sidebar', { 'sidebar-visible': sidebarVisible }]">
-      <div class="logo">
+      <div class="logo" @click="router.push('/')" style="cursor:pointer;">
         <span class="logo-icon">📝</span>
         <span v-if="!isCollapse" class="logo-text">AI Notes</span>
       </div>
@@ -46,12 +46,14 @@
             <span v-if="!isCollapse">{{ t('nav.teamSpaces') }}</span>
           </div>
           <div
-            class="menu-item"
+            class="sidebar-ai"
             :class="{ active: isActiveMenu('/ai/chat') }"
             @click="router.push('/ai/chat')"
           >
-            <el-icon><ChatDotRound /></el-icon>
-            <span v-if="!isCollapse">{{ t('nav.aiAssistant') }}</span>
+            <div class="sidebar-item">
+              <el-icon><ChatDotRound /></el-icon>
+              <span v-if="!isCollapse">{{ t('nav.aiAssistant') }}</span>
+            </div>
           </div>
           <div
             class="menu-item"
@@ -390,6 +392,37 @@ const handleCommandSelect = (item: any) => {
         font-weight: var(--font-weight-medium);
       }
 
+      .sidebar-ai {
+        padding: 8px;
+        margin: 0 8px;
+        background: var(--ai-purple-light);
+        border-radius: var(--radius-md);
+        border: 1px solid #DDD6FE;
+
+        .sidebar-item {
+          color: var(--ai-purple);
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: var(--space-3);
+          padding: var(--space-2) var(--space-3);
+          border-radius: var(--radius-md);
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-default);
+          font-size: var(--font-size-body);
+
+          &:hover {
+            background: #F5F3FF;
+            color: var(--ai-purple-dark);
+          }
+
+          &.active {
+            background: var(--ai-purple);
+            color: white;
+          }
+        }
+      }
+
       .menu-item {
         display: flex;
         align-items: center;
@@ -463,6 +496,12 @@ const handleCommandSelect = (item: any) => {
 
           :deep(.el-input__wrapper) {
             border-radius: var(--radius-full) !important;
+          }
+
+          :deep(.el-input__inner) {
+            &::placeholder {
+              color: var(--text-placeholder) !important;
+            }
           }
         }
       }

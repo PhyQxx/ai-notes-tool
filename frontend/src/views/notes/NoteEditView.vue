@@ -33,7 +33,7 @@
             <Top />
           </el-icon>
         </el-button>
-        <el-button @click="showAIAssistant = true">
+        <el-button class="ai-assistant-btn" @click="showAIAssistant = true">
           <el-icon><ChatDotRound /></el-icon>
           AI助手
         </el-button>
@@ -862,6 +862,22 @@ onBeforeUnmount(() => {
     text-align: center;
     color: var(--el-text-color-secondary);
     font-size: 13px;
+  }
+}
+
+.ai-assistant-btn {
+  background: var(--ai-purple-light) !important;
+  border-color: #DDD6FE !important;
+  color: var(--ai-purple) !important;
+
+  &:hover {
+    background: #F5F3FF !important;
+    border-color: var(--ai-purple) !important;
+    color: var(--ai-purple-dark) !important;
+  }
+
+  .el-icon {
+    color: var(--ai-purple);
   }
 }
 </style>

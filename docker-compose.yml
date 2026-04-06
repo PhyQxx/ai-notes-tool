@@ -12,8 +12,10 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - DEEPSEEK_API_KEY=sk-58f8f19b91254af0af7d2bef410b432b
-      - GLM_API_KEY=7453121cc2804e4387f04eb58aafa285.8e5KyMdOR2My8ueD
+      # DeepSeek API Key: 用户需要去 https://platform.deepseek.com 申请自己的API Key
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-841f529e7dcf20d7528b40fb159226dc86ace43f45603ce6}
+      # GLM API Key: 用户需要去智谱AI平台申请
+      - GLM_API_KEY=${GLM_API_KEY:-}
     depends_on:
       - redis
     restart: unless-stopped

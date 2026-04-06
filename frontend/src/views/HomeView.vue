@@ -3,20 +3,6 @@
     <div class="welcome-section">
       <h2>欢迎回来，{{ user?.nickname || '用户' }}！</h2>
       <p>开始记录您的想法和灵感</p>
-      <div class="quick-actions">
-        <el-button type="primary" @click="router.push('/notes/new')">
-          <el-icon><Plus /></el-icon>
-          新建笔记
-        </el-button>
-        <el-button @click="router.push('/notes')">
-          <el-icon><Search /></el-icon>
-          搜索笔记
-        </el-button>
-        <el-button @click="router.push('/ai')">
-          <el-icon><ChatDotRound /></el-icon>
-          AI 助手
-        </el-button>
-      </div>
     </div>
 
     <div class="stats-grid">
@@ -78,10 +64,8 @@
       <EmptyState
         v-else-if="recentNotes.length === 0"
         description="还没有笔记，开始记录你的第一个想法吧！"
-        action-text="新建笔记"
-        action-icon="Plus"
         secondary-text="查看模板"
-        @action="router.push('/notes/new')"
+        @secondary="router.push('/notes/new')"
       />
 
       <div v-else class="recent-notes-list" ref="homeScrollContainer" @scroll="handleHomeScroll">
@@ -103,7 +87,9 @@
             <p class="note-preview">{{ note.content.substring(0, 100) }}...</p>
             <div class="note-meta">
               <span class="note-time">{{ formatDate(note.updatedAt) }}</span>
-              <el-tag v-if="note.tags.length > 0" size="small">{{ note.tags[0] }}</el-tag>
+              <div class="note-tags" v-if="note.tags && note.tags.length > 0">
+                <span v-for="tag in note.tags.slice(0, 3)" :key="tag" class="note-tag">{{ tag }}</span>
+              </div>
             </div>
           </div>
         </el-card>
@@ -136,7 +122,9 @@
             <p class="note-preview">{{ note.content.substring(0, 100) }}...</p>
             <div class="note-meta">
               <span class="note-time">{{ formatDate(note.updatedAt) }}</span>
-              <el-tag v-if="note.tags && note.tags.length > 0" size="small">{{ note.tags[0] }}</el-tag>
+              <div class="note-tags" v-if="note.tags && note.tags.length > 0">
+                <span v-for="tag in note.tags.slice(0, 3)" :key="tag" class="note-tag">{{ tag }}</span>
+              </div>
             </div>
           </div>
         </el-card>
@@ -148,7 +136,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Plus, Search, ChatDotRound } from '@element-plus/icons-vue';
+
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { getRecommendNotes } from '@/api/note';
@@ -188,16 +176,25 @@ const formatDate = (date: string) => {
   return dayjs(date).fromNow();
 };
 
-onMounted(async () => {
+// Retry handler for ErrorState - must be defined at setup level (not inside onMounted)
+const loadNotes = async () => {
+  error.value = false;
+  errorMsg.value = '';
   loading.value = true;
   try {
     await noteStore.fetchNotes({ page: 1, size: 20, sortBy: 'updatedAt' });
     homeHasMore.value = noteStore.notes.length < noteStore.total;
-  } catch (error) {
-    console.error('加载笔记失败:', error);
+  } catch (err: any) {
+    error.value = true;
+    errorMsg.value = err?.message || '加载失败';
+    errorType.value = 'network';
   } finally {
     loading.value = false;
   }
+};
+
+onMounted(async () => {
+  await loadNotes();
   // 加载推荐笔记
   getRecommendNotes().then((data: any) => {
     recommendNotes.value = data || [];
@@ -225,24 +222,52 @@ const handleHomeScroll = () => {
 
   .welcome-section {
     margin-bottom: var(--nt-spacing-xl);
+    background: linear-gradient(135deg, #5B7FFF 0%, #8B5CF6 100%);
+    border-radius: var(--nt-radius-xl);
+    padding: 32px 32px 28px;
+    position: relative;
+    overflow: hidden;
+
+    // Decorative circles
+    &::before {
+      content: '';
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+      top: -60px;
+      right: 40px;
+      pointer-events: none;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 50%;
+      bottom: -30px;
+      right: 120px;
+      pointer-events: none;
+    }
 
     h2 {
       margin: 0 0 8px 0;
       font-size: 28px;
       font-weight: 700;
-      color: var(--nt-text-primary);
+      color: #ffffff;
+      position: relative;
+      z-index: 1;
     }
 
     p {
-      margin: 0 0 var(--nt-spacing-lg) 0;
+      margin: 0;
       font-size: var(--nt-font-size-body);
-      color: var(--nt-text-tertiary);
-    }
-
-    .quick-actions {
-      display: flex;
-      gap: var(--nt-spacing-md);
-      margin-top: var(--nt-spacing-md);
+      color: rgba(255, 255, 255, 0.85);
+      position: relative;
+      z-index: 1;
     }
   }
 
@@ -262,7 +287,7 @@ const handleHomeScroll = () => {
 
       &:hover {
         transform: translateY(-4px);
-        box-shadow: var(--nt-shadow-lg);
+        box-shadow: var(--shadow-brand-hover);
       }
 
       .stat-content {
@@ -419,8 +444,11 @@ const handleHomeScroll = () => {
             .note-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--el-text-color-primary); flex: 1; }
           }
           .note-preview { margin: 0 0 12px 0; font-size: 14px; color: var(--el-text-color-secondary); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-          .note-meta { display: flex; align-items: center; justify-content: space-between;
+          .note-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
             .note-time { font-size: 12px; color: var(--el-text-color-placeholder); }
+            .note-tags { display: flex; flex-wrap: wrap; gap: 4px;
+              .note-tag { padding: 1px 6px; background: var(--brand-primary-light-5); color: var(--brand-primary); border-radius: 4px; font-size: 11px; font-weight: 500; }
+            }
           }
         }
       }

@@ -85,6 +85,10 @@ services:
       MINIO_SECRET_KEY: ${MINIO_PASSWORD:-admin123456}
       MINIO_BUCKET: ${MINIO_BUCKET:-ai-notes}
       JAVA_OPTS: ${JAVA_OPTS:--Xms512m -Xmx1024m}
+      # DeepSeek API Key: 替换为你的 key，或在设置页单独配置
+      # 申请地址: https://platform.deepseek.com
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      GLM_API_KEY: ${GLM_API_KEY:-}
     depends_on:
       mysql:
         condition: service_healthy

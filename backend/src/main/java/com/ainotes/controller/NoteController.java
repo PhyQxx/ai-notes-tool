@@ -139,10 +139,18 @@ public class NoteController {
      * @return 成功信息
      */
     @PostMapping("/{id}/favorite")
-    @Operation(summary = "收藏/取消收藏")
+    @Operation(summary = "收藏/取消收藏（POST toggle）")
     public Result<Void> toggleFavorite(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         noteService.toggleFavorite(userId, id);
+        return Result.success("操作成功", null);
+    }
+
+    @DeleteMapping("/{id}/favorite")
+    @Operation(summary = "取消收藏")
+    public Result<Void> unfavorite(@PathVariable Long id, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        noteService.unfavorite(userId, id);
         return Result.success("操作成功", null);
     }
 
@@ -157,6 +165,14 @@ public class NoteController {
     public Result<Void> toggleTop(@PathVariable Long id, Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         noteService.toggleTop(userId, id);
+        return Result.success("操作成功", null);
+    }
+
+    @DeleteMapping("/{id}/top")
+    @Operation(summary = "取消置顶")
+    public Result<Void> untop(@PathVariable Long id, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        noteService.untop(userId, id);
         return Result.success("操作成功", null);
     }
 

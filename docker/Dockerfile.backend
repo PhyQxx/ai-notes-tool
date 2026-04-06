@@ -1,7 +1,7 @@
 # ===================================
 # Stage 1: Build
 # ===================================
-FROM eclipse-temurin:17-jdk AS builder
+FROM maven:3.9-eclipse-temurin-17 AS builder
 
 LABEL maintainer="AI Notes Tool Team"
 
@@ -17,7 +17,7 @@ COPY pom.xml .
 RUN ./mvnw dependency:go-offline -B
 
 # Copy source code
-COPY src ./src
+COPY backend/src ./src
 
 # Build the application
 RUN ./mvnw clean package -DskipTests -B
@@ -25,7 +25,7 @@ RUN ./mvnw clean package -DskipTests -B
 # ===================================
 # Stage 2: Run
 # ===================================
-FROM eclipse-temurin:17-jre AS runtime
+FROM amazoncorretto:17-alpine AS runtime
 
 LABEL maintainer="AI Notes Tool Team"
 

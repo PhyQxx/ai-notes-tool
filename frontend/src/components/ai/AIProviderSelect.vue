@@ -48,7 +48,7 @@ const aiStore = useAIStore();
 const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'deepseek-chat': 'DeepSeek Chat',
   'deepseek-coder': 'DeepSeek Coder',
-  'deepseek-reasoner': 'DeepSeek R1',
+  'deepseek-reasoner': 'DeepSeek R1 (推理)',
   'glm-4': 'GLM-4',
   'glm-4-flash': 'GLM-4 Flash',
   'glm-3-turbo': 'GLM-3 Turbo',

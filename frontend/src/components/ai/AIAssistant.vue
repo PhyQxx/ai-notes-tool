@@ -260,6 +260,8 @@ const handleClearContext = async () => {
   if (!aiStore.currentConversation?.id) return;
   try {
     await aiStore.clearContext(aiStore.currentConversation.id);
+    // Reload conversation to reflect cleared messages
+    await aiStore.fetchConversation(aiStore.currentConversation.id);
     ElMessage.success('上下文已清除');
   } catch {
     ElMessage.error('清除失败');
@@ -306,11 +308,15 @@ const handleSend = async () => {
   const content = inputMessage.value.trim();
   inputMessage.value = '';
   try {
-    await aiStore.sendMessage(content, props.noteId);
+    await aiStore.sendMessage(content, props.noteId, (ctrl: AbortController) => {
+      abortController = ctrl;
+    });
     await nextTick();
     scrollToBottom();
-  } catch (error) {
-    ElMessage.error('发送失败');
+  } catch (error: any) {
+    if (error.name !== 'AbortError') {
+      ElMessage.error('发送失败');
+    }
   }
 };
 
@@ -454,8 +460,8 @@ if (typeof document !== 'undefined') {
           .cursor { display: inline-block; animation: blink 1s infinite; }
         }
         &.user .message-text { background-color: var(--el-color-primary-light-9); margin-left: auto; max-width: 80%; }
-        &.assistant .message-text { background-color: var(--el-fill-color-light); margin-right: auto; max-width: 80%; }
-        &.assistant.streaming .message-text { background-color: var(--el-fill-color); }
+        &.assistant .message-text { background-color: var(--ai-purple-light, #EDE9FE); margin-right: auto; max-width: 80%; }
+        &.assistant.streaming .message-text { background-color: #F5F3FF; }
       }
     }
   }
@@ -463,6 +469,25 @@ if (typeof document !== 'undefined') {
   .input-area {
     .input-actions {
       display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;
+    }
+
+    :deep(.el-textarea__inner) {
+      border-radius: var(--radius-md);
+      border-color: var(--border);
+      transition: border-color 0.2s, box-shadow 0.2s;
+
+      &:hover {
+        border-color: var(--brand-primary);
+      }
+
+      &:focus {
+        border-color: var(--ai-purple, #8B5CF6);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+      }
+
+      &::placeholder {
+        color: var(--text-placeholder);
+      }
     }
   }
 }

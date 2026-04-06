@@ -64,7 +64,7 @@ export const useAIStore = defineStore('ai', () => {
       // Load messages from the new messages API
       const msgResult = await getConversationMessages(id);
       const messages: AIChatMessage[] = msgResult.messages.map(m => ({
-        role: m.role,
+        role: m.role as 'system' | 'user' | 'assistant',
         content: m.content
       }));
       conv.messages = messages;
@@ -85,8 +85,14 @@ export const useAIStore = defineStore('ai', () => {
 
   /**
    * 发送消息（支持流式）
+   * @param onController 可选回调，传入 AbortController 用于中止生成
    */
-  async function sendMessage(content: string, noteId?: number): Promise<void> {
+  async function sendMessage(content: string, noteId?: number, onController?: (ctrl: AbortController) => void): Promise<void> {
+    // Check if API key is configured
+    if (!config.value.hasApiKey) {
+      throw new Error('NO_API_KEY');
+    }
+
     const provider = config.value.provider;
     const model = config.value.model;
 
@@ -126,7 +132,7 @@ export const useAIStore = defineStore('ai', () => {
     streamMessage.value = '';
 
     await new Promise<void>((resolve, reject) => {
-      chatStream(
+      const controller = chatStream(
         {
           noteId,
           provider,
@@ -165,6 +171,10 @@ export const useAIStore = defineStore('ai', () => {
           reject(err);
         }
       );
+      // Expose AbortController to caller for stop functionality
+      if (onController && controller) {
+        onController(controller);
+      }
     });
   }
 

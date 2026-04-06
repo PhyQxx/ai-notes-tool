@@ -12,14 +12,14 @@ const service: AxiosInstance = axios.create({
 });
 
 // CSRF Token 缓存
-let csrfToken: string | null = null;
+let csrfToken: string = '';
 
 async function getCsrfToken(): Promise<string> {
   if (csrfToken) return csrfToken;
   const res = await fetch('/api/csrf/token');
   const data = await res.json();
   if (data.code === 200 && data.data?.token) {
-    csrfToken = data.data.token;
+    csrfToken = data.data.token || "";
     return csrfToken;
   }
   return '';

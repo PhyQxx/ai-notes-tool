@@ -12,6 +12,8 @@ export function listNotes(params: {
   size?: number;
   folderId?: number;
   keyword?: string;
+  sortBy?: string;
+  isFavorite?: number;
 }): Promise<PageResult<Note>> {
   return http.get('/notes', { params });
 }
