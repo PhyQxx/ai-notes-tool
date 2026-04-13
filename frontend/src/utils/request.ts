@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { ElMessage } from 'element-plus';
-import { getToken, removeToken } from './storage';
+import { getToken, removeToken, setToken } from './storage';
 
 // 创建axios实例
 const service: AxiosInstance = axios.create({
@@ -53,6 +53,12 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse) => {
+    // 检查后端返回的新token，静默续期
+    const newToken = response.headers['x-new-token'];
+    if (newToken) {
+      setToken(newToken);
+    }
+
     const { code, message, data } = response.data;
 
     // 成功响应

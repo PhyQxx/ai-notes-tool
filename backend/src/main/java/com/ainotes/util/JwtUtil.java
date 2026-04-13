@@ -161,6 +161,46 @@ public class JwtUtil {
     }
 
     /**
+     * 从已过期的Token中提取用户ID（仅验证签名，忽略过期）
+     *
+     * @param token Token
+     * @return 用户ID，签名无效时返回null
+     */
+    public Long getUserIdFromExpiredToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return claims.get("userId", Long.class);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            // 过期但签名有效，从body中提取userId
+            return e.getClaims().get("userId", Long.class);
+        } catch (Exception e) {
+            log.error("从过期Token获取用户ID失败：{}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 判断Token是否即将过期
+     *
+     * @param token      Token
+     * @param thresholdMs 阈值（毫秒），剩余时间小于此值视为即将过期
+     * @return true-即将过期，false-未即将过期
+     */
+    public boolean isTokenNearExpiry(String token, long thresholdMs) {
+        try {
+            Claims claims = parseToken(token);
+            long remaining = claims.getExpiration().getTime() - System.currentTimeMillis();
+            return remaining < thresholdMs;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    /**
      * 获取Token过期时间
      *
      * @param token Token
