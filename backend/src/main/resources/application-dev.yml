@@ -36,9 +36,9 @@ jwt:
 # AI Configuration
 ai:
   deepseek:
-    api-key: sk-58f8f19b91254af0af7d2bef410b432b
+    api-key: 
   glm:
-    api-key: 7453121cc2804e4387f04eb58aafa285.8e5KyMdOR2My8ueD
+    api-key: 
 
 # Logging Development Configuration
 logging:
