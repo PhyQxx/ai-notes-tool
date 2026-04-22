@@ -115,10 +115,11 @@
               <el-radio-group v-model="aiConfig.provider">
                 <el-radio value="deepseek">DeepSeek</el-radio>
                 <el-radio value="glm">GLM</el-radio>
+                <el-radio value="minimax">MiniMax</el-radio>
               </el-radio-group>
             </el-form-item>
 
-            <el-form-item label="DeepSeek API Key">
+            <el-form-item v-if="aiConfig.provider === 'deepseek'" label="DeepSeek API Key">
               <el-input
                 v-model="aiConfig.deepseekApiKey"
                 type="password"
@@ -130,17 +131,39 @@
               </div>
             </el-form-item>
 
-            <el-form-item label="GLM API Key">
+            <el-form-item v-if="aiConfig.provider === 'glm'" label="GLM API Key">
               <el-input
                 v-model="aiConfig.glmApiKey"
                 type="password"
                 placeholder="请输入GLM API Key"
                 show-password
               />
+              <div class="ai-hint">
+                免费API Key，前往 <a href="https://open.bigmodel.cn" target="_blank">open.bigmodel.cn</a> 注册申请
+              </div>
+            </el-form-item>
+
+            <el-form-item v-if="aiConfig.provider === 'minimax'" label="MiniMax API Key">
+              <el-input
+                v-model="aiConfig.minimaxApiKey"
+                type="password"
+                placeholder="请输入MiniMax API Key"
+                show-password
+              />
+              <div class="ai-hint">
+                免费API Key，前往 <a href="https://platform.minimax.chat" target="_blank">platform.minimax.chat</a> 注册申请
+              </div>
             </el-form-item>
 
             <el-form-item label="默认模型">
-              <el-select v-model="aiConfig.model" placeholder="选择模型" style="width: 100%">
+              <el-select
+                v-model="aiConfig.model"
+                placeholder="选择或输入模型名称"
+                filterable
+                allow-create
+                default-first-option
+                style="width: 100%"
+              >
                 <el-option
                   v-for="model in currentModels"
                   :key="model"
@@ -203,12 +226,15 @@ const aiConfig = reactive({
   model: 'deepseek-chat',
   deepseekApiKey: '',
   glmApiKey: '',
+  minimaxApiKey: '',
   hasApiKey: false
 });
 
 const currentModels = computed(() => {
   if (aiConfig.provider === 'deepseek') {
-    return ['deepseek-chat', 'deepseek-coder'];
+    return ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'];
+  } else if (aiConfig.provider === 'minimax') {
+    return ['MiniMax-M2.7'];
   } else {
     return ['glm-4', 'glm-4-flash', 'glm-3-turbo'];
   }
@@ -309,8 +335,9 @@ const handleSaveAIConfig = async () => {
     await aiStore.updateConfig({
       provider: aiConfig.provider,
       model: aiConfig.model,
-      deepseekApiKey: aiConfig.deepseekApiKey,
-      glmApiKey: aiConfig.glmApiKey
+      deepseekApiKey: aiConfig.provider === 'deepseek' ? aiConfig.deepseekApiKey : undefined,
+      glmApiKey: aiConfig.provider === 'glm' ? aiConfig.glmApiKey : undefined,
+      minimaxApiKey: aiConfig.provider === 'minimax' ? aiConfig.minimaxApiKey : undefined
     });
     ElMessage.success('AI配置保存成功');
   } catch (error: any) {
@@ -321,17 +348,15 @@ const handleSaveAIConfig = async () => {
 };
 
 const handleTestAIConfig = async () => {
-  if (!aiConfig.deepseekApiKey && !aiConfig.glmApiKey) {
-    ElMessage.warning('请先输入API Key');
-    return;
-  }
-
   testing.value = true;
   aiConnected.value = false;
   tested.value = false;
   try {
     const testProvider = aiConfig.provider;
-    const testApiKey = testProvider === 'deepseek' ? aiConfig.deepseekApiKey : aiConfig.glmApiKey;
+    let testApiKey = '';
+    if (testProvider === 'deepseek') testApiKey = aiConfig.deepseekApiKey;
+    else if (testProvider === 'glm') testApiKey = aiConfig.glmApiKey;
+    else if (testProvider === 'minimax') testApiKey = aiConfig.minimaxApiKey;
     const res = await fetch('/api/ai/config/test', {
       method: 'POST',
       headers: {
@@ -376,6 +401,7 @@ onMounted(async () => {
     aiConfig.model = aiStore.config.model;
     aiConfig.deepseekApiKey = aiStore.config.deepseekApiKey || '';
     aiConfig.glmApiKey = aiStore.config.glmApiKey || '';
+    aiConfig.minimaxApiKey = aiStore.config.minimaxApiKey || '';
     aiConfig.hasApiKey = aiStore.config.hasApiKey || false;
   } catch (error) {
     console.error('加载AI配置失败:', error);

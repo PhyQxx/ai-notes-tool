@@ -75,6 +75,31 @@ export const useAuthStore = defineStore('auth', () => {
   async function initAuth(): Promise<void> {
     if (token.value && !user.value) {
       await fetchProfile();
+    } else if (!token.value) {
+      // 无Token，自动以访客身份登录
+      await guestLogin();
+    }
+  }
+
+  /**
+   * 访客自动登录（无感进入）
+   */
+  async function guestLogin(): Promise<void> {
+    const timestamp = Date.now();
+    const guestEmail = `guest_${timestamp}@ainotes.local`;
+    const guestPwd = `guest_${timestamp}`;
+    try {
+      // 尝试注册访客账号
+      await register({ email: guestEmail, password: guestPwd, username: '访客' });
+    } catch (e: any) {
+      // 如果注册失败（可能已存在），尝试登录
+      if (e.message && !e.message.includes('已存在')) {
+        try {
+          await login({ email: guestEmail, password: guestPwd });
+        } catch {
+          // 忽略登录失败
+        }
+      }
     }
   }
 

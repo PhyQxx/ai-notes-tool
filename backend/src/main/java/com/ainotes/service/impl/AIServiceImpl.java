@@ -4,6 +4,7 @@ import com.ainotes.ai.AIProvider;
 import com.ainotes.ai.AIProviderFactory;
 import com.ainotes.ai.DeepSeekProvider;
 import com.ainotes.ai.GLMProvider;
+import com.ainotes.ai.MiniMaxProvider;
 import com.ainotes.common.exception.BusinessException;
 import com.ainotes.config.AIConfig;
 import com.ainotes.dto.request.AIChatRequest;
@@ -15,7 +16,9 @@ import com.ainotes.dto.response.AIConversationMessagesResponse;
 import com.ainotes.entity.AIChatMessage;
 import com.ainotes.entity.AIConversation;
 import com.ainotes.entity.Note;
+import com.ainotes.entity.UserAiConfig;
 import com.ainotes.mapper.AIConversationMapper;
+import com.ainotes.mapper.UserAiConfigMapper;
 import com.ainotes.service.AIChatMessageService;
 import com.ainotes.service.AIService;
 import com.ainotes.interceptor.PromptInjectionInterceptor;
@@ -26,14 +29,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,12 +51,9 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
 
     private final AIProviderFactory providerFactory;
     private final NoteService noteService;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final UserAiConfigMapper userAiConfigMapper;
     private final AIChatMessageService chatMessageService;
     private final AIConfig aiConfig;
-
-    private static final String AI_CONFIG_KEY_PREFIX = "ai:config:";
-    private static final Duration CONFIG_CACHE_TTL = Duration.ofHours(1);
     private static final int MAX_CONTEXT_ROUNDS = 20;
     private static final String SYSTEM_PROMPT = "你是一个智能笔记助手，可以帮助用户整理笔记、回答问题、生成内容。请用简洁、准确的方式回答。";
 
@@ -230,31 +228,30 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
 
     @Override
     public AIConfigResponse getConfig(Long userId) {
-        // 从缓存获取用户配置
-        String configKey = AI_CONFIG_KEY_PREFIX + userId;
-        Map<String, Object> config = (Map<String, Object>) redisTemplate.opsForValue().get(configKey);
+        // 从数据库获取用户配置
+        UserAiConfig dbConfig = userAiConfigMapper.selectOne(
+                new LambdaQueryWrapper<UserAiConfig>().eq(UserAiConfig::getUserId, userId));
 
-        String provider = "deepseek";
-        String model = "deepseek-chat";
+        String provider = dbConfig != null && dbConfig.getProvider() != null ? dbConfig.getProvider() : "deepseek";
+        String model = dbConfig != null && dbConfig.getModel() != null ? dbConfig.getModel() : "deepseek-chat";
 
-        if (config != null) {
-            provider = (String) config.getOrDefault("provider", "deepseek");
-            model = (String) config.getOrDefault("model", "deepseek-chat");
-        }
-
-        // Check if user has their own API key configured
-        boolean hasUserKey = config != null && (
-            ("deepseek".equalsIgnoreCase(provider) && config.containsKey("deepseekApiKey") && !String.valueOf(config.get("deepseekApiKey")).isEmpty()) ||
-            ("glm".equalsIgnoreCase(provider) && config.containsKey("glmApiKey") && !String.valueOf(config.get("glmApiKey")).isEmpty())
+        // Check if user has their own API key configured in DB
+        boolean hasUserKey = dbConfig != null && (
+            ("deepseek".equalsIgnoreCase(provider) && dbConfig.getDeepseekApiKey() != null && !dbConfig.getDeepseekApiKey().isEmpty()) ||
+            ("glm".equalsIgnoreCase(provider) && dbConfig.getGlmApiKey() != null && !dbConfig.getGlmApiKey().isEmpty()) ||
+            ("minimax".equalsIgnoreCase(provider) && dbConfig.getMinimaxApiKey() != null && !dbConfig.getMinimaxApiKey().isEmpty())
         );
 
-        // Check global fallback key
+        // Check global fallback key (from application.yml/env)
         boolean hasGlobalKey = false;
         if ("deepseek".equalsIgnoreCase(provider)) {
             String globalKey = aiConfig.getDeepseek().getApiKey();
             hasGlobalKey = globalKey != null && !globalKey.isEmpty();
         } else if ("glm".equalsIgnoreCase(provider)) {
             String globalKey = aiConfig.getGlm().getApiKey();
+            hasGlobalKey = globalKey != null && !globalKey.isEmpty();
+        } else if ("minimax".equalsIgnoreCase(provider)) {
+            String globalKey = aiConfig.getMinimax().getApiKey();
             hasGlobalKey = globalKey != null && !globalKey.isEmpty();
         }
 
@@ -274,6 +271,7 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
     }
 
     @Override
+    @Transactional
     public void updateConfig(Long userId, AIConfigUpdateRequest request) {
         // 验证提供商和模型
         AIProvider provider = providerFactory.getProvider(request.getProvider());
@@ -281,16 +279,29 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
             throw new BusinessException("不支持的模型: " + request.getModel());
         }
 
-        // 构建配置
-        Map<String, Object> config = new HashMap<>();
-        config.put("provider", request.getProvider());
-        config.put("model", request.getModel());
-        config.put("deepseekApiKey", request.getDeepseekApiKey());
-        config.put("glmApiKey", request.getGlmApiKey());
+        // 查询是否已有配置
+        UserAiConfig existing = userAiConfigMapper.selectOne(
+                new LambdaQueryWrapper<UserAiConfig>().eq(UserAiConfig::getUserId, userId));
 
-        // 缓存配置
-        String configKey = AI_CONFIG_KEY_PREFIX + userId;
-        redisTemplate.opsForValue().set(configKey, config, CONFIG_CACHE_TTL);
+        if (existing != null) {
+            // 更新已有配置
+            existing.setProvider(request.getProvider());
+            existing.setModel(request.getModel());
+            existing.setDeepseekApiKey(request.getDeepseekApiKey());
+            existing.setGlmApiKey(request.getGlmApiKey());
+            existing.setMinimaxApiKey(request.getMinimaxApiKey());
+            userAiConfigMapper.updateById(existing);
+        } else {
+            // 新建配置
+            UserAiConfig newConfig = new UserAiConfig();
+            newConfig.setUserId(userId);
+            newConfig.setProvider(request.getProvider());
+            newConfig.setModel(request.getModel());
+            newConfig.setDeepseekApiKey(request.getDeepseekApiKey());
+            newConfig.setGlmApiKey(request.getGlmApiKey());
+            newConfig.setMinimaxApiKey(request.getMinimaxApiKey());
+            userAiConfigMapper.insert(newConfig);
+        }
 
         log.info("用户 {} 更新AI配置: provider={}, model={}", userId, request.getProvider(), request.getModel());
     }
@@ -302,27 +313,30 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
 
     /**
      * 获取AI Provider（带API Key）
-     * 优先级：用户Redis配置 > 全局环境变量
+     * 优先级：用户数据库配置 > 全局环境变量
      */
     private AIProvider getProviderWithApiKey(Long userId, String providerName) {
-        String configKey = AI_CONFIG_KEY_PREFIX + userId;
-        Map<String, Object> config = (Map<String, Object>) redisTemplate.opsForValue().get(configKey);
+        // 从数据库获取用户配置
+        UserAiConfig dbConfig = userAiConfigMapper.selectOne(
+                new LambdaQueryWrapper<UserAiConfig>().eq(UserAiConfig::getUserId, userId));
 
         // 默认使用 deepseek
         if (providerName == null || providerName.isEmpty()) {
-            if (config != null) {
-                providerName = (String) config.getOrDefault("provider", "deepseek");
+            if (dbConfig != null && dbConfig.getProvider() != null) {
+                providerName = dbConfig.getProvider();
             } else {
                 providerName = "deepseek";
             }
         }
 
         String apiKey = null;
-        if (config != null) {
+        if (dbConfig != null) {
             if ("deepseek".equalsIgnoreCase(providerName)) {
-                apiKey = (String) config.get("deepseekApiKey");
+                apiKey = dbConfig.getDeepseekApiKey();
             } else if ("glm".equalsIgnoreCase(providerName)) {
-                apiKey = (String) config.get("glmApiKey");
+                apiKey = dbConfig.getGlmApiKey();
+            } else if ("minimax".equalsIgnoreCase(providerName)) {
+                apiKey = dbConfig.getMinimaxApiKey();
             }
         }
 
@@ -332,6 +346,8 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
                 apiKey = aiConfig.getDeepseek().getApiKey();
             } else if ("glm".equalsIgnoreCase(providerName)) {
                 apiKey = aiConfig.getGlm().getApiKey();
+            } else if ("minimax".equalsIgnoreCase(providerName)) {
+                apiKey = aiConfig.getMinimax().getApiKey();
             }
         }
 
@@ -578,6 +594,8 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
                     ((DeepSeekProvider) provider).setApiKey(apiKey);
                 } else if (provider instanceof GLMProvider) {
                     ((GLMProvider) provider).setApiKey(apiKey);
+                } else if (provider instanceof MiniMaxProvider) {
+                    ((MiniMaxProvider) provider).setApiKey(apiKey);
                 }
             }
             // Send a simple test message

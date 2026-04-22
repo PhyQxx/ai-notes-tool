@@ -90,6 +90,7 @@ export interface AIConfig {
   model: string;
   deepseekApiKey?: string;
   glmApiKey?: string;
+  minimaxApiKey?: string;
   hasApiKey?: boolean;
 }
 

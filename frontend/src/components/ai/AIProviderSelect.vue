@@ -12,8 +12,11 @@
 
     <el-select
       v-model="selectedModel"
-      placeholder="选择模型"
+      placeholder="选择或输入模型名称"
       size="default"
+      filterable
+      allow-create
+      default-first-option
       style="width: 100%; margin-top: 12px"
       @change="handleModelChange"
     >
@@ -52,6 +55,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'glm-4': 'GLM-4',
   'glm-4-flash': 'GLM-4 Flash',
   'glm-3-turbo': 'GLM-3 Turbo',
+  'MiniMax-M2.7': 'MiniMax M2.7',
   'gpt-4': 'GPT-4',
   'gpt-3.5-turbo': 'GPT-3.5',
 };
@@ -64,12 +68,17 @@ const providers = ref<AIProviderInfo[]>([
   {
     name: 'deepseek',
     label: 'DeepSeek',
-    models: ['deepseek-chat', 'deepseek-coder']
+    models: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner']
   },
   {
     name: 'glm',
     label: 'GLM',
     models: ['glm-4', 'glm-4-flash', 'glm-3-turbo']
+  },
+  {
+    name: 'minimax',
+    label: 'MiniMax',
+    models: ['MiniMax-M2.7']
   }
 ]);
 

@@ -393,33 +393,31 @@ const handleCommandSelect = (item: any) => {
       }
 
       .sidebar-ai {
-        padding: 8px;
-        margin: 0 8px;
-        background: var(--ai-purple-light);
+        // 与普通菜单项样式一致，移除特殊背景高亮
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-2) var(--space-3);
         border-radius: var(--radius-md);
-        border: 1px solid #DDD6FE;
+        cursor: pointer;
+        transition: all var(--duration-fast) var(--ease-default);
+        font-size: var(--font-size-body);
 
         .sidebar-item {
-          color: var(--ai-purple);
-          font-weight: 500;
+          color: inherit;
           display: flex;
           align-items: center;
           gap: var(--space-3);
-          padding: var(--space-2) var(--space-3);
-          border-radius: var(--radius-md);
-          cursor: pointer;
-          transition: all var(--duration-fast) var(--ease-default);
-          font-size: var(--font-size-body);
+        }
 
-          &:hover {
-            background: #F5F3FF;
-            color: var(--ai-purple-dark);
-          }
+        &:hover {
+          background: var(--hover-bg);
+          color: var(--text-primary);
+        }
 
-          &.active {
-            background: var(--ai-purple);
-            color: white;
-          }
+        &.active {
+          background: var(--active-bg);
+          color: var(--primary-color);
         }
       }
 

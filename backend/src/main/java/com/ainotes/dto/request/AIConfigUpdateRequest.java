@@ -34,4 +34,9 @@ public class AIConfigUpdateRequest {
      */
     private String glmApiKey;
 
+    /**
+     * MiniMax API密钥（可选）
+     */
+    private String minimaxApiKey;
+
 }

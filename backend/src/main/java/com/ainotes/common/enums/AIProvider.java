@@ -19,7 +19,12 @@ public enum AIProvider {
     /**
      * 智谱GLM
      */
-    GLM("glm", "智谱GLM");
+    GLM("glm", "智谱GLM"),
+
+    /**
+     * MiniMax
+     */
+    MINIMAX("minimax", "MiniMax");
 
     /**
      * 提供商编码

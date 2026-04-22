@@ -185,13 +185,13 @@ public class AIController {
      * @return 测试结果
      */
     @PostMapping("/config/test")
-    @Operation(summary = "测试AI配置连接")
-    public Result<Map<String, Object>> testConfig(@RequestBody Map<String, Object> request, Authentication authentication) {
+    @Operation(summary = "测试AI配置连接（无需登录）")
+    public Result<Map<String, Object>> testConfig(@RequestBody Map<String, Object> request) {
         String provider = (String) request.getOrDefault("provider", "deepseek");
         String apiKey = (String) request.get("apiKey");
         String model = (String) request.getOrDefault("model", "deepseek-chat");
-        Long userId = (Long) authentication.getPrincipal();
-        boolean success = aiService.testConnection(userId, provider, apiKey, model);
+        // 测试API Key不需要用户认证，传null
+        boolean success = aiService.testConnection(null, provider, apiKey, model);
         return Result.success(Map.of("success", success, "message", success ? "连接成功" : "连接失败"));
     }
 

@@ -28,6 +28,11 @@ public class AIConfig {
     private GLM glm = new GLM();
 
     /**
+     * MiniMax配置
+     */
+    private MiniMax minimax = new MiniMax();
+
+    /**
      * DeepSeek配置
      */
     @Data
@@ -77,6 +82,32 @@ public class AIConfig {
          * 支持的模型列表
          */
         private List<String> models = List.of("glm-4", "glm-4-flash", "glm-3-turbo");
+    }
+
+    /**
+     * MiniMax配置
+     */
+    @Data
+    public static class MiniMax {
+        /**
+         * API基础URL
+         */
+        private String baseUrl = "https://api.minimax.chat/v1";
+
+        /**
+         * API密钥
+         */
+        private String apiKey = "";
+
+        /**
+         * 默认模型
+         */
+        private String defaultModel = "MiniMax-M2.7";
+
+        /**
+         * 支持的模型列表
+         */
+        private List<String> models = List.of("MiniMax-M2.7");
     }
 
 }

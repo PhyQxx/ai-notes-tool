@@ -287,6 +287,8 @@ const getQueryParams = () => {
 };
 
 const fetchInitialNotes = async () => {
+  // 防止并发重复请求
+  if (initialLoading.value) return;
   initialLoading.value = true;
   hasMore.value = true;
   noteStore.currentPage = 1;

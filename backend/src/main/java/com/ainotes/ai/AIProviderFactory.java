@@ -21,6 +21,7 @@ public class AIProviderFactory {
 
     private final DeepSeekProvider deepSeekProvider;
     private final GLMProvider glmProvider;
+    private final MiniMaxProvider miniMaxProvider;
 
     /**
      * 根据提供商名称获取对应的AI服务提供者
@@ -34,6 +35,8 @@ public class AIProviderFactory {
             return deepSeekProvider;
         } else if ("glm".equalsIgnoreCase(providerName)) {
             return glmProvider;
+        } else if ("minimax".equalsIgnoreCase(providerName)) {
+            return miniMaxProvider;
         } else {
             throw new BusinessException("不支持的AI提供商: " + providerName);
         }
@@ -68,6 +71,7 @@ public class AIProviderFactory {
         List<String> providers = new ArrayList<>();
         providers.add("deepseek");
         providers.add("glm");
+        providers.add("minimax");
         return providers;
     }
 
@@ -91,6 +95,13 @@ public class AIProviderFactory {
                 .displayName("智谱GLM")
                 .defaultModel(glmProvider.getDefaultModel())
                 .models(glmProvider.getSupportedModels())
+                .build());
+
+        infos.add(com.ainotes.dto.response.AIConfigResponse.ProviderInfo.builder()
+                .name("minimax")
+                .displayName("MiniMax")
+                .defaultModel(miniMaxProvider.getDefaultModel())
+                .models(miniMaxProvider.getSupportedModels())
                 .build());
 
         return infos;

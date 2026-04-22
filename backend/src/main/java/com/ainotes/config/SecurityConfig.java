@@ -53,6 +53,10 @@ public class SecurityConfig {
                         .requestMatchers("/share/**").permitAll()
                         // 放行CSRF Token获取
                         .requestMatchers("/csrf/**").permitAll()
+                        // 放行AI供应商公开接口（无需登录即可查看可用模型）
+                        .requestMatchers("/ai/providers").permitAll()
+                        .requestMatchers("/ai/models").permitAll()
+                        .requestMatchers("/ai/config/test").permitAll()
                         // 放行CORS预检
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // 其他请求需要认证

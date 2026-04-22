@@ -29,6 +29,14 @@ public class TagController {
     private static final String TAG_CLOUD_CACHE_PREFIX = "tags:cloud:";
     private static final long TAG_CACHE_TTL_MINUTES = 5;
 
+    /**
+     * 获取所有标签颜色配置（供标签管理页面使用）
+     */
+    @GetMapping
+    public Result<List<TagColor>> listTags() {
+        return Result.success(tagColorMapper.selectList(null));
+    }
+
     @GetMapping("/cloud")
     @SuppressWarnings("unchecked")
     public Result<List<Map<String, Object>>> getTagCloud(
