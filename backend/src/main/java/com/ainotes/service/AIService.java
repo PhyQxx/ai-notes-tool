@@ -7,10 +7,12 @@ import com.ainotes.dto.response.AIChatResponse;
 import com.ainotes.dto.response.AIConfigResponse;
 import com.ainotes.dto.response.AIConversationMessagesResponse;
 import com.ainotes.entity.AIConversation;
+import com.ainotes.entity.Note;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * AI服务接口
@@ -141,6 +143,41 @@ public interface AIService {
      * AI润色
      */
     String polish(Long userId, String content);
+
+    /**
+     * AI 提取待办事项
+     */
+    List<String> extractTasks(Long userId, String content);
+
+    /**
+     * AI 建议笔记关联
+     */
+    List<Note> suggestRelations(Long userId, Long noteId);
+
+    /**
+     * AI 语音转写 (Whisper)
+     */
+    String transcribe(Long userId, byte[] audioData, String fileName);
+
+    /**
+     * AI OCR 识图
+     */
+    String ocr(Long userId, byte[] imageData, String fileName);
+
+    /**
+     * AI 建议笔记标签
+     */
+    List<String> suggestTags(Long userId, String content);
+
+    /**
+     * AI 知识回顾 (Flashback)
+     */
+    List<Map<String, Object>> getFlashback(Long userId);
+
+    /**
+     * AI 知识冲突与重复检测
+     */
+    List<Map<String, Object>> detectConflicts(Long userId);
 
     /**
      * 测试AI连接

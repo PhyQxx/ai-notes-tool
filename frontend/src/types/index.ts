@@ -41,6 +41,7 @@ export interface Note {
   isTop: boolean;
   spaceId?: number;
   viewCount: number;
+  customAttributes?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
 }

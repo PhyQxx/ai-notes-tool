@@ -98,23 +98,70 @@
         <el-icon><Plus /></el-icon>
         添加标签
       </el-button>
+
+      <el-tooltip content="AI 智能建议标签" placement="top">
+        <el-button 
+          size="small" 
+          type="primary" 
+          plain 
+          circle 
+          :loading="suggestingTags"
+          @click="handleSuggestTags"
+          style="margin-left: 8px"
+        >
+          <el-icon><MagicStick /></el-icon>
+        </el-button>
+      </el-tooltip>
       <VoiceInput @transcript="handleVoiceTranscript" />
     </div>
 
-    <div class="editor-container">
+    <div class="editor-main">
+      <div class="editor-container">
+        <!-- 笔记属性面板 -->
+        <NotePropertyPanel
+          v-model="customAttributes"
+          @change="handleAutoSave"
+        />
 
-      <MarkdownEditor
-        v-if="editorMode === 'markdown'"
-        v-model="noteContent"
-        :height="editorHeight"
-        @save="handleAutoSave"
-      />
+        <MarkdownEditor
+          v-if="editorMode === 'markdown'"
+          v-model="noteContent"
+          :height="editorHeight"
+          :note-id="noteId"
+          @save="handleAutoSave"
+        />
 
-      <RichTextEditor
-        v-else
-        v-model="noteContent"
-        :height="editorHeight"
-      />
+        <RichTextEditor
+          v-else
+          v-model="noteContent"
+          :height="editorHeight"
+          :note-id="noteId"
+        />
+      </div>
+
+      <!-- 反向链接侧边栏 -->
+      <div v-if="showBacklinksSidebar" class="backlinks-sidebar">
+        <div class="sidebar-header">
+          <span>反向链接 ({{ backlinks.length }})</span>
+          <el-button text size="small" @click="showBacklinksSidebar = false">
+            <el-icon><Close /></el-icon>
+          </el-button>
+        </div>
+        <div class="sidebar-content">
+          <div v-if="backlinks.length === 0" class="empty-backlinks">
+            暂无引用
+          </div>
+          <div
+            v-for="link in backlinks"
+            :key="link.id"
+            class="backlink-item"
+            @click="navigateToNote(link.sourceNoteId)"
+          >
+            <div class="backlink-title">{{ link.sourceTitle }}</div>
+            <div class="backlink-time">{{ formatTime(link.createdAt) }}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- AI助手侧边面板 -->
@@ -139,27 +186,6 @@
       :size="400"
     >
       <CommentPanel v-if="noteId" :note-id="noteId" />
-    </el-drawer>
-
-    <!-- 反向链接面板 -->
-    <el-drawer
-      v-model="showBacklinksPanel"
-      title="反向链接"
-      direction="rtl"
-      :size="350"
-    >
-      <div v-if="backlinks.length === 0" style="text-align:center;color:#999;padding:40px 0;">
-        暂无笔记引用此笔记
-      </div>
-      <div
-        v-for="link in backlinks"
-        :key="link.id"
-        class="backlink-item"
-        @click="navigateToNote(link.sourceNoteId)"
-      >
-        <div class="backlink-title">{{ link.sourceTitle }}</div>
-        <div class="backlink-time">{{ formatTime(link.createdAt) }}</div>
-      </div>
     </el-drawer>
 
     <!-- [[ 笔记选择器弹出框 -->
@@ -264,11 +290,23 @@ import { createShare, listShares, deleteShare } from '@/api/noteShare';
 import CollabIndicator from '@/components/editor/CollabIndicator.vue';
 import VoiceInput from '@/components/voice/VoiceInput.vue';
 import AttachmentList from '@/components/attachment/AttachmentList.vue';
+import NotePropertyPanel from '@/components/note/NotePropertyPanel.vue';
 import wsClient, { type WSMessage } from '@/utils/websocket';
 import type { NoteVersion } from '@/types';
-import { getSpaceDetail } from '@/api/space';
-import { getFolderTree } from '@/api/folder';
-import { getBacklinks, searchTitles, type NoteLink } from '@/api/noteLink';
+import {
+  Plus,
+  Star,
+  Top,
+  ChatDotRound,
+  Share,
+  MoreFilled,
+  Clock,
+  Link,
+  Delete,
+  Close,
+  MagicStick
+} from '@element-plus/icons-vue';
+import { suggestTags } from '@/api/ai';
 
 const route = useRoute();
 const router = useRouter();
@@ -280,6 +318,7 @@ const currentNote = computed(() => noteStore.currentNote);
 const noteTitle = ref('');
 const noteContent = ref('');
 const noteTags = ref<string[]>([]);
+const customAttributes = ref<Record<string, any>>({});
 const saveStatus = ref<{ type: string; text: string } | null>(null);
 const editorHeight = ref('calc(100vh - 180px)');
 
@@ -289,7 +328,7 @@ const tagInputRef = ref();
 const showAIAssistant = ref(false);
 const showVersionPanel = ref(false);
 const showCommentPanel = ref(false);
-const showBacklinksPanel = ref(false);
+const showBacklinksSidebar = ref(false);
 const backlinks = ref<NoteLink[]>([]);
 
 // 分享
@@ -312,23 +351,44 @@ const commentCount = ref(0);
 const editorMode = ref<'markdown' | 'richtext'>('markdown');
 const spaceName = ref('');
 const folderName = ref('');
+const suggestingTags = ref(false);
+const isSaving = ref(false);
 
-// ===== 自动保存草稿（localStorage）=====
+const statusText = computed(() => {
+  if (isOffline.value) return '已保存至本地';
+  if (isSaving.value) return '正在同步...';
+  return '已同步云端';
+});
+
+const saveToRecent = (id: number, title: string) => {
+  const data = localStorage.getItem('recent_notes');
+  let list = data ? JSON.parse(data) : [];
+  // Remove if exists
+  list = list.filter((n: any) => n.id !== id);
+  // Add to front
+  list.unshift({ id, title, time: new Date().toISOString() });
+  // Limit to 5
+  list = list.slice(0, 5);
+  localStorage.setItem('recent_notes', JSON.stringify(list));
+};
+
+// ===== 自动保存草稿（IndexedDB）=====
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null;
 const lastSavedDraftContent = ref('');
+const isOffline = ref(!navigator.onLine);
 
-function getDraftKey(id: number | string) {
-  return `note-draft-${id}`;
-}
-
-function startAutoSaveDraft() {
+async function startAutoSaveDraft() {
   stopAutoSaveDraft();
-  autoSaveTimer = setInterval(() => {
+  autoSaveTimer = setInterval(async () => {
     const current = noteContent.value;
     if (current && current !== lastSavedDraftContent.value) {
-      const key = getDraftKey(noteId.value || 'new');
-      localStorage.setItem(key, current);
-      localStorage.setItem(key + '-time', new Date().toISOString());
+      const draft: Draft = {
+        noteId: noteId.value || 'new',
+        title: noteTitle.value,
+        content: current,
+        updatedAt: new Date().toISOString()
+      };
+      await offlineDB.saveDraft(draft);
       lastSavedDraftContent.value = current;
     }
   }, 5000);
@@ -341,35 +401,45 @@ function stopAutoSaveDraft() {
   }
 }
 
-function clearDraft() {
-  const key = getDraftKey(noteId.value || 'new');
-  localStorage.removeItem(key);
-  localStorage.removeItem(key + '-time');
+async function clearDraft() {
+  await offlineDB.deleteDraft(noteId.value || 'new');
 }
 
 async function checkDraftRecovery() {
-  const key = getDraftKey(noteId.value || 'new');
-  const draft = localStorage.getItem(key);
-  if (!draft || draft.length === 0) return;
+  const draft = await offlineDB.getDraft(noteId.value || 'new');
+  if (!draft || !draft.content) return;
+  
   // 仅在服务端内容为空或草稿比服务端内容新时提示
-  if (noteContent.value && noteContent.value === draft) return;
+  if (noteContent.value && noteContent.value === draft.content) return;
+  
   try {
     await ElMessageBox.confirm(
-      '检测到未保存的草稿，是否恢复？',
+      `检测到您在 ${new Date(draft.updatedAt).toLocaleString()} 保存的本地草稿，是否恢复？`,
       '草稿恢复',
       {
         confirmButtonText: '恢复',
         cancelButtonText: '丢弃',
-        type: 'info',
-        distinguishCancelAndClose: true,
+        type: 'info'
       }
     );
-    noteContent.value = draft;
-    lastSavedDraftContent.value = draft;
+    noteContent.value = draft.content;
+    noteTitle.value = draft.title || noteTitle.value;
+    lastSavedDraftContent.value = draft.content;
   } catch {
-    clearDraft();
+    await clearDraft();
   }
 }
+
+const handleOnline = () => {
+  isOffline.value = false;
+  ElMessage.success('网络已恢复，正在同步...');
+  handleAutoSave(); // Trigger a save to server
+};
+
+const handleOffline = () => {
+  isOffline.value = true;
+  ElMessage.warning('网络已断开，您的更改将保存到本地');
+};
 
 // 注册全局快捷键
 useShortcuts();
@@ -443,6 +513,39 @@ const handleVoiceTranscript = (text: string) => {
   noteContent.value += text;
 };
 
+const handleCopyLink = () => {
+  if (!noteId.value) return;
+  const url = `${window.location.origin}/notes/shared/${noteId.value}`;
+  navigator.clipboard.writeText(url).then(() => {
+    ElMessage.success('分享链接已复制到剪贴板');
+  });
+};
+
+const handleSuggestTags = async () => {
+  if (!noteContent.value) {
+    ElMessage.warning('内容为空，无法建议标签');
+    return;
+  }
+  suggestingTags.value = true;
+  try {
+    const tags = await suggestTags(noteContent.value);
+    if (tags && tags.length > 0) {
+      tags.forEach(tag => {
+        if (!noteTags.value.includes(tag)) {
+          noteTags.value.push(tag);
+        }
+      });
+      ElMessage.success('标签建议已添加');
+    } else {
+      ElMessage.info('AI 未发现合适的标签');
+    }
+  } catch (error) {
+    ElMessage.error('获取标签建议失败');
+  } finally {
+    suggestingTags.value = false;
+  }
+};
+
 const handleAutoSave = () => {
   // 防抖自动保存
   if (saveTimer) {
@@ -450,32 +553,42 @@ const handleAutoSave = () => {
   }
   saveTimer = setTimeout(async () => {
     try {
+      isSaving.value = true;
       await saveNote();
       showSaveStatus('success', '自动保存成功');
     } catch (error) {
       console.error('自动保存失败:', error);
+    } finally {
+      isSaving.value = false;
     }
   }, 3000);
 };
 
 const saveNote = async () => {
-  if (!noteId.value) {
-    // 新建笔记
-    const note = await noteStore.createNote({
-      title: noteTitle.value,
-      content: noteContent.value,
-      contentType: 'markdown'
-    });
-    // 更新标签
-    await noteStore.updateNote(note.id, { tags: noteTags.value });
-    router.replace(`/notes/${note.id}`);
-  } else {
-    // 更新笔记
-    await noteStore.updateNote(noteId.value, {
-      title: noteTitle.value,
-      content: noteContent.value,
-      tags: noteTags.value
-    });
+  isSaving.value = true;
+  try {
+    if (!noteId.value) {
+      // 新建笔记
+      const note = await noteStore.createNote({
+        title: noteTitle.value,
+        content: noteContent.value,
+        contentType: 'markdown',
+        customAttributes: customAttributes.value
+      });
+      // 更新标签
+      await noteStore.updateNote(note.id, { tags: noteTags.value });
+      router.replace(`/notes/${note.id}`);
+    } else {
+      // 更新笔记
+      await noteStore.updateNote(noteId.value, {
+        title: noteTitle.value,
+        content: noteContent.value,
+        tags: noteTags.value,
+        customAttributes: customAttributes.value
+      });
+    }
+  } finally {
+    isSaving.value = false;
   }
 };
 
@@ -563,7 +676,7 @@ const openBacklinks = async () => {
   } catch (e) {
     console.error('获取反向链接失败', e);
   }
-  showBacklinksPanel.value = true;
+  showBacklinksSidebar.value = !showBacklinksSidebar.value;
 };
 
 const navigateToNote = (id: number) => {
@@ -671,6 +784,8 @@ wsClient.on('content_change', handleContentChange);
 onMounted(async () => {
   // 注册 Ctrl+S 监听
   window.addEventListener('note:save', onNoteSave);
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
 
   if (noteId.value && noteId.value !== 0) {
     try {
@@ -680,6 +795,10 @@ onMounted(async () => {
         noteContent.value = currentNote.value.content;
         noteTags.value = currentNote.value.tags || [];
         editorMode.value = (currentNote.value.contentType as 'markdown' | 'richtext') || 'markdown';
+        
+        // 保存到最近查看
+        saveToRecent(currentNote.value.id, currentNote.value.title);
+        
         // Resolve breadcrumb
         if (currentNote.value.spaceId) {
           try { const s = await getSpaceDetail(currentNote.value.spaceId); spaceName.value = s.name || ''; } catch(e) {}
@@ -798,12 +917,56 @@ onBeforeUnmount(() => {
     }
   }
 
-  .editor-container {
+  .editor-main {
     flex: 1;
-    overflow: hidden;
     display: flex;
-    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+
+    .editor-container {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .backlinks-sidebar {
+      width: 300px;
+      border-left: 1px solid var(--el-border-color);
+      background-color: var(--el-bg-color);
+      display: flex;
+      flex-direction: column;
+      animation: slideIn 0.3s ease;
+
+      .sidebar-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--el-border-color-lighter);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .sidebar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 0;
+
+        .empty-backlinks {
+          text-align: center;
+          color: var(--el-text-color-placeholder);
+          padding: 40px 0;
+          font-size: 13px;
+        }
+      }
+    }
   }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
 .backlink-item {

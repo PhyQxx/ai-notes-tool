@@ -10,6 +10,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * 导出控制器
  *
@@ -43,32 +45,30 @@ public class ExportController {
 
     /**
      * 导出PDF文件
-     *
-     * @param noteId 笔记ID
-     * @return 文件响应
      */
     @PostMapping("/pdf")
     @Operation(summary = "导出PDF文件")
     public ResponseEntity<byte[]> exportPDF(
             @PathVariable Long noteId,
+            @RequestBody(required = false) Map<String, String> body,
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        return exportService.exportPDF(userId, noteId);
+        String password = body != null ? body.get("password") : null;
+        return exportService.exportPDF(userId, noteId, password);
     }
 
     /**
      * 导出Word文件
-     *
-     * @param noteId 笔记ID
-     * @return 文件响应
      */
     @PostMapping("/word")
     @Operation(summary = "导出Word文件")
     public ResponseEntity<byte[]> exportWord(
             @PathVariable Long noteId,
+            @RequestBody(required = false) Map<String, String> body,
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        return exportService.exportWord(userId, noteId);
+        String password = body != null ? body.get("password") : null;
+        return exportService.exportWord(userId, noteId, password);
     }
 
 }

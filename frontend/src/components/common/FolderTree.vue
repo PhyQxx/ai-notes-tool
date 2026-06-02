@@ -68,8 +68,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useNoteStore } from '@/stores/note';
 import type { Folder } from '@/types';
@@ -79,7 +79,23 @@ defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const noteStore = useNoteStore();
+const treeRef = ref<any>(null);
+
+watch(() => route.query.folderId, (newFolderId) => {
+  if (newFolderId) {
+    treeRef.value?.setCurrentKey(Number(newFolderId));
+  } else {
+    treeRef.value?.setCurrentKey(null);
+  }
+});
+
+onMounted(() => {
+  if (route.query.folderId) {
+    treeRef.value?.setCurrentKey(Number(route.query.folderId));
+  }
+});
 
 const dialogVisible = ref(false);
 const dialogTitle = ref('');
@@ -173,6 +189,10 @@ const handleDeleteFolder = async (folder: Folder) => {
     }
   }
 };
+
+defineExpose({
+  handleCreateRoot
+});
 </script>
 
 <style scoped lang="scss">

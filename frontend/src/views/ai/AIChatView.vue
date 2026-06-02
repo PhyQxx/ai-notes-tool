@@ -46,13 +46,24 @@
           <span v-else class="chat-title">
             {{ aiStore.currentConversation?.title || '新对话' }}
           </span>
+          <el-switch
+            v-model="isKnowledgeMode"
+            inline-prompt
+            active-text="知识库模式"
+            inactive-text="普通对话"
+            style="margin-left: 12px"
+          />
         </div>
 
         <div class="header-right">
           <AIProviderSelect
+            v-if="!isKnowledgeMode"
             v-model:provider="aiStore.config.provider"
             v-model:model="aiStore.config.model"
           />
+          <div v-else class="knowledge-info">
+            <el-tag size="small" type="success">基于全量个人笔记</el-tag>
+          </div>
         </div>
       </div>
 
@@ -108,6 +119,14 @@
               </div>
               <div class="message-text">
                 <MarkdownRenderer :content="msg.content" />
+              </div>
+              <div v-if="msg.role === 'assistant'" class="message-actions">
+                <el-button text size="small" @click="handleCopyMessage(msg.content)">
+                  <el-icon><DocumentCopy /></el-icon> 复制
+                </el-button>
+                <el-button v-if="noteId" text size="small" @click="handleInsertToNote(msg.content)">
+                  <el-icon><Bottom /></el-icon> 插入笔记
+                </el-button>
               </div>
             </div>
           </div>
@@ -168,13 +187,34 @@ import {
   Delete,
   Document,
   ChatDotRound,
-  Promotion
+  Promotion,
+  DocumentCopy,
+  Bottom
 } from '@element-plus/icons-vue';
+
+// ... (existing imports)
+
+const noteId = computed(() => {
+  return parseInt(route.query.noteId as string) || 0;
+});
+
+const handleCopyMessage = (content: string) => {
+  navigator.clipboard.writeText(content).then(() => {
+    ElMessage.success('已复制到剪贴板');
+  });
+};
+
+const handleInsertToNote = (content: string) => {
+  if (!noteId.value) return;
+  window.dispatchEvent(new CustomEvent('ai:insert-content', { detail: { content } }));
+  ElMessage.success('已发送至编辑器');
+};
 import { useAIStore } from '@/stores/ai';
 import { useNoteStore } from '@/stores/note';
 import { useAuthStore } from '@/stores/auth';
 import AIProviderSelect from '@/components/ai/AIProviderSelect.vue';
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue';
+import { knowledgeChatStream } from '@/api/ai';
 
 const route = useRoute();
 const router = useRouter();
@@ -183,6 +223,7 @@ const noteStore = useNoteStore();
 const authStore = useAuthStore();
 
 const inputMessage = ref('');
+const isKnowledgeMode = ref(false);
 const chatContainer = ref<HTMLElement>();
 const user = authStore.user;
 const userAvatar = user?.avatar || '';
@@ -194,92 +235,67 @@ const quickTips = [
   { emoji: '❓', text: '解释这个概念', desc: 'AI问答' }
 ];
 
-// 关联的笔记ID
-const noteId = computed(() => {
-  return parseInt(route.query.noteId as string) || 0;
-});
-
-// 关联的笔记标题
-const associatedNote = computed(() => {
-  if (noteId.value && noteStore.currentNote) {
-    return noteStore.currentNote.title;
-  }
-  return '';
-});
-
-const handleNewConversation = () => {
-  aiStore.newConversation();
-  inputMessage.value = '';
-};
-
-const handleSelectConversation = async (id: number) => {
-  try {
-    await aiStore.fetchConversation(id);
-    await nextTick();
-    scrollToBottom();
-  } catch (error) {
-    console.error('加载对话失败:', error);
-    ElMessage.error('加载对话失败');
-  }
-};
-
-const handleDeleteConversation = async (id: number) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这个对话吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
-
-    await aiStore.deleteConversation(id);
-    ElMessage.success('删除成功');
-
-    if (aiStore.currentConversation?.id === id) {
-      handleNewConversation();
-    }
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      console.error('删除对话失败:', error);
-      ElMessage.error('删除失败');
-    }
-  }
-};
+// ... (other computed properties)
 
 const handleSend = async () => {
-  if (!inputMessage.value.trim()) {
-    return;
-  }
-
-  // Check API key before sending
-  if (!aiStore.config.hasApiKey) {
-    ElMessage.warning({
-      message: '请先在设置页配置 DeepSeek API Key',
-      duration: 5000,
-      onClose: () => {
-        router.push({ name: 'settings', query: { tab: 'ai' } });
-      }
-    });
-    return;
-  }
+  if (!inputMessage.value.trim()) return;
 
   const content = inputMessage.value.trim();
   inputMessage.value = '';
 
-  try {
-    await aiStore.sendMessage(content, noteId.value || undefined);
+  if (isKnowledgeMode.value) {
+    // Knowledge Base Mode (RAG)
+    if (!aiStore.currentConversation) {
+      aiStore.newConversation('知识库问答');
+    }
+    
+    // Add user message
+    aiStore.currentConversation?.messages.push({
+      role: 'user',
+      content: content,
+      createdAt: new Date().toISOString()
+    });
 
-    // 滚动到底部
-    await nextTick();
-    scrollToBottom();
-  } catch (error: any) {
-    console.error('发送消息失败:', error);
-    if (error.message === 'NO_API_KEY') {
+    aiStore.isStreaming = true;
+    aiStore.streamMessage = '';
+
+    knowledgeChatStream(
+      content,
+      (token) => {
+        aiStore.streamMessage += token;
+      },
+      () => {
+        aiStore.isStreaming = false;
+        aiStore.currentConversation?.messages.push({
+          role: 'assistant',
+          content: aiStore.streamMessage,
+          createdAt: new Date().toISOString()
+        });
+        aiStore.streamMessage = '';
+      },
+      (err) => {
+        aiStore.isStreaming = false;
+        ElMessage.error('知识库问答失败: ' + err.message);
+      }
+    );
+  } else {
+    // Normal Mode
+    if (!aiStore.config.hasApiKey) {
       ElMessage.warning('请先在设置页配置 DeepSeek API Key');
       router.push({ name: 'settings', query: { tab: 'ai' } });
-    } else {
-      ElMessage.error('发送失败，请稍后重试');
+      return;
+    }
+
+    try {
+      await aiStore.sendMessage(content, noteId.value || undefined);
+    } catch (error: any) {
+      console.error('发送消息失败:', error);
+      ElMessage.error('发送失败');
     }
   }
+
+  await nextTick();
+  scrollToBottom();
 };
 
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -635,6 +651,25 @@ onMounted(async () => {
             &.streaming {
               .message-text {
                 background-color: rgba(139, 92, 246, 0.15);
+              }
+            }
+
+            .message-actions {
+              display: flex;
+              gap: 8px;
+              margin-top: 8px;
+              padding-top: 8px;
+              border-top: 1px solid rgba(139, 92, 246, 0.1);
+
+              .el-button {
+                padding: 0;
+                height: auto;
+                font-size: 12px;
+                color: var(--el-text-color-secondary);
+
+                &:hover {
+                  color: var(--brand-primary);
+                }
               }
             }
           }

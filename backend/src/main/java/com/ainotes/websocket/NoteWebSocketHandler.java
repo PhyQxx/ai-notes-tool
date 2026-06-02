@@ -73,12 +73,37 @@ public class NoteWebSocketHandler extends TextWebSocketHandler {
                 case "leave_note" -> handleLeaveNote(userId, json);
                 case "cursor_move" -> handleCursorMove(userId, json);
                 case "content_change" -> handleContentChange(userId, json);
+                case "yjs_update" -> handleYjsUpdate(userId, json);
                 case "ping" -> sendMessage(session, Map.of("type", "pong"));
                 default -> log.warn("未知消息类型: {}", type);
             }
         } catch (Exception e) {
             log.error("处理WebSocket消息失败: {}", e.getMessage());
         }
+    }
+
+    /** noteId -> List of Base64 encoded Yjs updates */
+    private final ConcurrentHashMap<Long, java.util.List<String>> noteYjsUpdates = new ConcurrentHashMap<>();
+
+    /**
+     * 处理 Yjs 更新
+     */
+    private void handleYjsUpdate(Long userId, JsonNode json) {
+        Long noteId = userNoteMap.get(userId);
+        if (noteId == null) return;
+
+        String update = json.get("data").asText();
+        
+        // 1. 缓存更新
+        noteYjsUpdates.computeIfAbsent(noteId, k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(update);
+
+        // 2. 广播给其他人
+        broadcastToNote(noteId, userId, Map.of(
+                "type", "yjs_update",
+                "userId", userId,
+                "noteId", noteId,
+                "data", update
+        ));
     }
 
     @Override
@@ -94,6 +119,9 @@ public class NoteWebSocketHandler extends TextWebSocketHandler {
                 users.remove(userId);
                 if (users.isEmpty()) {
                     noteUsers.remove(noteId);
+                    // 如果没有用户在线了，可以选择清理 Yjs 缓存（或者持久化到数据库）
+                    // 为了简单起见，这里暂时只在内存中保留，实际生产环境应考虑 Redis 或数据库
+                    // noteYjsUpdates.remove(noteId); 
                 } else {
                     // 通知其他人该用户离开了
                     broadcastToNote(noteId, userId, Map.of(
@@ -135,6 +163,16 @@ public class NoteWebSocketHandler extends TextWebSocketHandler {
                 "noteId", noteId,
                 "users", onlineUsers
         ));
+
+        // 发送缓存的 Yjs 更新
+        java.util.List<String> updates = noteYjsUpdates.get(noteId);
+        if (updates != null && !updates.isEmpty()) {
+            sendMessageToUser(userId, Map.of(
+                    "type", "yjs_sync",
+                    "noteId", noteId,
+                    "data", updates
+            ));
+        }
     }
 
     /**

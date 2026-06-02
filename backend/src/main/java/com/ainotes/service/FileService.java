@@ -30,6 +30,16 @@ public interface FileService {
     UploadResponse uploadFile(Long userId, MultipartFile file);
 
     /**
+     * 上传文件（直接上传字节数组）
+     *
+     * @param data        文件数据
+     * @param fileName    文件名
+     * @param contentType 内容类型
+     * @return 上传后的访问URL
+     */
+    String uploadFile(byte[] data, String fileName, String contentType);
+
+    /**
      * 删除文件
      *
      * @param userId 用户ID

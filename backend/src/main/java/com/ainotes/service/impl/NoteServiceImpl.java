@@ -47,6 +47,10 @@ public class NoteServiceImpl implements NoteService {
     private final NoteLinkService noteLinkService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final com.ainotes.service.AuditLogService auditLogService;
+    
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.ainotes.service.KnowledgeBaseService knowledgeBaseService;
 
     private static final String NOTE_CACHE_KEY = "note:detail:";
     private static final long NOTE_CACHE_TTL_MINUTES = 10;
@@ -77,6 +81,7 @@ public class NoteServiceImpl implements NoteService {
         note.setContentType(StringUtils.hasText(request.getContentType()) ? request.getContentType() : "markdown");
         note.setFolderId(request.getFolderId());
         note.setTags(convertTagsToString(request.getTags()));
+        note.setCustomAttributes(request.getCustomAttributes());
         note.setIsFavorite(0);
         note.setIsTop(0);
         note.setViewCount(0);
@@ -91,6 +96,9 @@ public class NoteServiceImpl implements NoteService {
 
         noteMapper.insert(note);
         log.info("创建笔记成功，笔记ID：{}", note.getId());
+
+        // 索引到 AI 知识库
+        try { knowledgeBaseService.indexNote(note); } catch (Exception e) { log.warn("索引笔记到知识库失败", e); }
 
         // 同步双向链接
         try { noteLinkService.syncNoteLinks(note.getId(), note.getContent(), note.getTitle()); } catch (Exception e) { log.warn("同步笔记链接失败", e); }
@@ -136,9 +144,15 @@ public class NoteServiceImpl implements NoteService {
         if (request.getTags() != null) {
             note.setTags(convertTagsToString(request.getTags()));
         }
+        if (request.getCustomAttributes() != null) {
+            note.setCustomAttributes(request.getCustomAttributes());
+        }
 
         // 更新笔记
         noteMapper.updateById(note);
+
+        // 索引到 AI 知识库
+        try { knowledgeBaseService.indexNote(note); } catch (Exception e) { log.warn("索引笔记到知识库失败", e); }
 
         // 同步双向链接
         try { noteLinkService.syncNoteLinks(noteId, note.getContent(), note.getTitle()); } catch (Exception e) { log.warn("同步笔记链接失败", e); }
@@ -151,7 +165,7 @@ public class NoteServiceImpl implements NoteService {
         // 清除笔记详情缓存
         evictNoteCache(noteId);
         // 清除标签云缓存
-        evictTagCloudCache();
+        evictTagCloudCache(userId);
         auditLogService.log(userId, null, "UPDATE_NOTE", "note", noteId, "更新笔记: " + note.getTitle(), null);
     }
 
@@ -231,7 +245,7 @@ public class NoteServiceImpl implements NoteService {
         // 清除笔记详情缓存
         evictNoteCache(noteId);
         // 清除标签云缓存
-        evictTagCloudCache();
+        evictTagCloudCache(userId);
         auditLogService.log(userId, null, "DELETE_NOTE", "note", noteId, "删除笔记(软删除): " + note.getTitle(), null);
     }
 
@@ -278,6 +292,12 @@ public class NoteServiceImpl implements NoteService {
 
     @Override
     public IPage<Note> listNotes(Long userId, NoteQueryRequest query) {
+        if (query == null) {
+            query = new NoteQueryRequest();
+            query.setPage(1);
+            query.setSize(10000); // 默认查一个大数量，用于初始化索引等
+        }
+        
         // 构建查询条件
         LambdaQueryWrapper<Note> queryWrapper = new LambdaQueryWrapper<>();
         // 注意：不手动添加 eq(Note::getStatus, 1)，@TableLogic 已自动处理逻辑删除
@@ -287,22 +307,27 @@ public class NoteServiceImpl implements NoteService {
         // 如果指定了空间ID，查询该空间的笔记
         if (query.getSpaceId() != null && query.getSpaceId() > 0) {
             // 检查用户是否有该空间的查看权限
-            checkSpacePermission(userId, query.getSpaceId(), "viewer");
+            if (userId != null) {
+                checkSpacePermission(userId, query.getSpaceId(), "viewer");
+            }
             queryWrapper.eq(Note::getSpaceId, query.getSpaceId());
         } else {
             // 查询个人笔记（spaceId为0或null表示个人笔记）
-            queryWrapper.eq(Note::getUserId, userId);
-            queryWrapper.and(w -> w.isNull(Note::getSpaceId).or().eq(Note::getSpaceId, 0));
+            if (userId != null) {
+                queryWrapper.eq(Note::getUserId, userId);
+                queryWrapper.and(w -> w.isNull(Note::getSpaceId).or().eq(Note::getSpaceId, 0));
+            }
         }
 
         // 关键词搜索（标题、内容、标签）
         if (StringUtils.hasText(query.getKeyword())) {
+            final String keyword = query.getKeyword();
             queryWrapper.and(wrapper -> wrapper
-                    .like(Note::getTitle, query.getKeyword())
+                    .like(Note::getTitle, keyword)
                     .or()
-                    .like(Note::getContent, query.getKeyword())
+                    .like(Note::getContent, keyword)
                     .or()
-                    .like(Note::getTags, query.getKeyword())
+                    .like(Note::getTags, keyword)
             );
         }
 
@@ -642,18 +667,18 @@ public class NoteServiceImpl implements NoteService {
         SpaceMember member = spaceMemberMapper.selectOne(memberWrapper);
 
         if (member == null) {
-            throw new BusinessException("不是该空间的成员");
+            throw new BusinessException("您不是该空间的成员，无权访问");
         }
 
         if (member.getStatus() == 0) {
-            throw new BusinessException("账号已被禁用");
+            throw new BusinessException("您在该空间的账号已被禁用");
         }
 
         int userLevel = getRoleLevel(member.getRole());
         int requiredLevel = getRoleLevel(requiredRole);
 
         if (userLevel < requiredLevel) {
-            throw new BusinessException("权限不足");
+            throw new BusinessException("权限不足，需要 " + requiredRole + " 或更高权限");
         }
     }
 
@@ -739,7 +764,7 @@ public class NoteServiceImpl implements NoteService {
 
         // 清除缓存
         evictNoteCache(noteId);
-        evictTagCloudCache();
+        evictTagCloudCache(userId);
     }
 
     @Override
@@ -755,7 +780,7 @@ public class NoteServiceImpl implements NoteService {
         log.info("清空回收站，用户ID：{}，删除数量：{}", userId, trashNotes.size());
 
         // 清除标签云缓存
-        evictTagCloudCache();
+        evictTagCloudCache(userId);
     }
 
     private void evictNoteCache(Long noteId) {
@@ -766,9 +791,14 @@ public class NoteServiceImpl implements NoteService {
         }
     }
 
-    private void evictTagCloudCache() {
+    private void evictTagCloudCache(Long userId) {
         try {
-            var keys = redisTemplate.keys(TAG_CLOUD_CACHE_KEY + "*");
+            // 只清除特定用户的标签云缓存
+            // 如果用户量很大，这里可以使用 Scan 代替 Keys，或者直接通过 key 模式精确删除
+            // 这里先尝试精确删除 global 缓存（大多数情况）
+            redisTemplate.delete(TAG_CLOUD_CACHE_KEY + userId + ":global");
+            // 对于空间缓存，如果有规律也可以清理，或者保持现有的 keys 逻辑（但要小心性能）
+            Set<String> keys = redisTemplate.keys(TAG_CLOUD_CACHE_KEY + userId + ":*");
             if (keys != null && !keys.isEmpty()) {
                 redisTemplate.delete(keys);
             }

@@ -14,8 +14,13 @@
       </el-button>
 
       <div class="folder-section">
-        <div class="section-title">{{ t('nav.folders') }}</div>
-        <FolderTree :is-collapse="isCollapse" />
+        <div class="section-title">
+          <span>{{ t('nav.folders') }}</span>
+          <el-button v-if="!isCollapse" text circle size="small" class="add-folder-btn" @click="handleCreateRootFolder">
+            <el-icon><Plus /></el-icon>
+          </el-button>
+        </div>
+        <FolderTree ref="folderTreeRef" :is-collapse="isCollapse" />
       </div>
 
       <div class="menu-section">
@@ -63,6 +68,14 @@
             <el-icon><Share /></el-icon>
             <span v-if="!isCollapse">{{ t('nav.knowledgeGraph') }}</span>
           </div>
+          <div
+            class="menu-item"
+            :class="{ active: isActiveMenu('/canvas') || isActiveMenu('/canvas/') }"
+            @click="router.push('/canvas')"
+          >
+            <el-icon><Monitor /></el-icon>
+            <span v-if="!isCollapse">知识画布</span>
+          </div>
         </div>
         <div class="menu-group">
           <div class="menu-group-label">管理</div>
@@ -103,17 +116,46 @@
           <el-button v-if="showMobileMenu" text class="hamburger-btn" @click="sidebarVisible = !sidebarVisible">
             <el-icon :size="20"><Expand /></el-icon>
           </el-button>
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索笔记..."
-            clearable
-            class="search-input"
-            @keyup.enter="handleSearch"
+          <el-popover
+            placement="bottom-start"
+            :width="400"
+            trigger="focus"
+            :visible="searchHistoryVisible && searchHistory.length > 0"
           >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
+            <template #reference>
+              <el-input
+                v-model="searchKeyword"
+                placeholder="搜索笔记..."
+                clearable
+                class="search-input"
+                @keyup.enter="handleSearch"
+                @focus="searchHistoryVisible = true"
+                @blur="handleSearchBlur"
+              >
+                <template #prefix>
+                  <el-icon><Search /></el-icon>
+                </template>
+              </el-input>
             </template>
-          </el-input>
+            <div class="search-history">
+              <div class="history-header">
+                <span>最近搜索</span>
+                <el-button text size="small" @click="clearSearchHistory">清空</el-button>
+              </div>
+              <div class="history-list">
+                <div
+                  v-for="item in searchHistory"
+                  :key="item"
+                  class="history-item"
+                  @mousedown="handleHistoryClick(item)"
+                >
+                  <el-icon><Clock /></el-icon>
+                  <span class="history-text">{{ item }}</span>
+                  <el-icon class="delete-icon" @click.stop="removeHistoryItem(item)"><Close /></el-icon>
+                </div>
+              </div>
+            </div>
+          </el-popover>
         </div>
 
         <div class="header-right">
@@ -163,10 +205,11 @@
       </el-input>
       <div v-if="commandResults.length > 0" class="command-results">
         <div v-for="item in commandResults" :key="item.id" class="command-item" @click="handleCommandSelect(item)">
-          <div class="command-item-title">{{ item.title || '无标题' }}</div>
-          <div class="command-item-preview">{{ (item.content || '').substring(0, 60) }}</div>
+          <div class="command-item-title" v-html="item.titleHighlight || item.title || '无标题'"></div>
+          <div class="command-item-preview" v-html="item.contentPreview || (item.content || '').substring(0, 60)"></div>
         </div>
       </div>
+
       <div v-else-if="commandSearched" class="command-empty">未找到匹配的笔记</div>
     </el-dialog>
   </el-container>
@@ -204,8 +247,16 @@ const checkMobile = () => {
 };
 
 const searchKeyword = ref('');
+const searchHistory = ref<string[]>([]);
+const searchHistoryVisible = ref(false);
 const user = authStore.user;
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
+
+const folderTreeRef = ref<any>(null);
+
+const handleCreateRootFolder = () => {
+  folderTreeRef.value?.handleCreateRoot();
+};
 
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value;
@@ -222,10 +273,56 @@ const handleNewNote = () => {
 };
 
 const handleSearch = () => {
-  if (searchKeyword.value.trim()) {
-    noteStore.search(searchKeyword.value.trim());
+  const kw = searchKeyword.value.trim();
+  if (kw) {
+    saveSearchHistory(kw);
+    searchHistoryVisible.value = false;
+    noteStore.search(kw);
     router.push('/notes');
   }
+};
+
+const handleSearchBlur = () => {
+  setTimeout(() => {
+    searchHistoryVisible.value = false;
+  }, 200);
+};
+
+const saveSearchHistory = (kw: string) => {
+  const history = [...searchHistory.value];
+  const index = history.indexOf(kw);
+  if (index > -1) {
+    history.splice(index, 1);
+  }
+  history.unshift(kw);
+  searchHistory.value = history.slice(0, 10);
+  localStorage.setItem('search_history', JSON.stringify(searchHistory.value));
+};
+
+const loadSearchHistory = () => {
+  const history = localStorage.getItem('search_history');
+  if (history) {
+    try {
+      searchHistory.value = JSON.parse(history);
+    } catch (e) {
+      searchHistory.value = [];
+    }
+  }
+};
+
+const clearSearchHistory = () => {
+  searchHistory.value = [];
+  localStorage.removeItem('search_history');
+};
+
+const removeHistoryItem = (item: string) => {
+  searchHistory.value = searchHistory.value.filter(h => h !== item);
+  localStorage.setItem('search_history', JSON.stringify(searchHistory.value));
+};
+
+const handleHistoryClick = (item: string) => {
+  searchKeyword.value = item;
+  handleSearch();
 };
 
 const handleLogout = async () => {
@@ -251,6 +348,7 @@ onMounted(async () => {
   window.addEventListener('resize', checkMobile);
   await authStore.initAuth();
   await noteStore.fetchFolders();
+  loadSearchHistory();
   const token = getToken();
   if (token) {
     wsClient.connect(token);
@@ -368,6 +466,20 @@ const handleCommandSelect = (item: any) => {
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: var(--font-weight-medium);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        .add-folder-btn {
+          padding: 2px;
+          height: auto;
+          color: var(--text-secondary);
+
+          &:hover {
+            color: var(--brand-primary);
+            background-color: var(--brand-primary-bg);
+          }
+        }
       }
     }
 
@@ -573,6 +685,15 @@ const handleCommandSelect = (item: any) => {
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+
+      :deep(em) {
+        color: var(--brand-primary);
+        font-weight: bold;
+        background: var(--brand-primary-light-5);
+        padding: 0 2px;
+        border-radius: 2px;
+        font-style: normal;
+      }
     }
   }
 
@@ -581,6 +702,55 @@ const handleCommandSelect = (item: any) => {
     padding: var(--space-6);
     color: var(--text-placeholder);
     font-size: var(--font-size-body);
+  }
+
+  .search-history {
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+    }
+
+    .history-list {
+      .history-item {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        gap: 8px;
+
+        &:hover {
+          background-color: var(--el-fill-color-light);
+
+          .delete-icon {
+            opacity: 1;
+          }
+        }
+
+        .history-text {
+          flex: 1;
+          font-size: 14px;
+          color: var(--el-text-color-primary);
+        }
+
+        .delete-icon {
+          opacity: 0;
+          color: var(--el-text-color-placeholder);
+          transition: opacity 0.2s;
+
+          &:hover {
+            color: var(--el-color-danger);
+          }
+        }
+      }
+    }
   }
 }
 

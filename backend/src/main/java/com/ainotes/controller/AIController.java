@@ -8,6 +8,7 @@ import com.ainotes.dto.response.AIChatResponse;
 import com.ainotes.dto.response.AIConfigResponse;
 import com.ainotes.dto.response.AIConversationMessagesResponse;
 import com.ainotes.entity.AIConversation;
+import com.ainotes.entity.Note;
 import com.ainotes.service.AIService;
 import com.ainotes.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,8 +21,12 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+
+import com.ainotes.service.KnowledgeBaseService;
+import com.ainotes.dto.response.NoteClusterResponse;
 
 /**
  * AI智能体控制器
@@ -38,6 +43,115 @@ import java.util.Map;
 public class AIController {
 
     private final AIService aiService;
+    private final com.ainotes.config.KnowledgeAssistant knowledgeAssistant;
+    private final KnowledgeBaseService knowledgeBaseService;
+
+    /**
+     * 笔记语义聚类
+     */
+    @GetMapping("/clusters")
+    @Operation(summary = "笔记语义聚类", description = "基于 Embedding 对笔记进行自动分类")
+    public Result<List<NoteClusterResponse>> getNoteClusters(
+            Authentication authentication,
+            @RequestParam(defaultValue = "5") int k) {
+        Long userId = (Long) authentication.getPrincipal();
+        return Result.success(knowledgeBaseService.clusterNotes(userId, k));
+    }
+
+    /**
+     * AI 知识库对话（同步）
+     */
+    @PostMapping("/knowledge/chat")
+    @Operation(summary = "AI 知识库对话（全库问答）")
+    public Result<Map<String, String>> knowledgeChat(@RequestBody Map<String, String> body) {
+        String query = body.get("query");
+        String answer = knowledgeAssistant.answer(query);
+        return Result.success(Map.of("answer", answer));
+    }
+
+    /**
+     * AI 知识库流式对话（SSE）
+     */
+    @PostMapping("/knowledge/chat/stream")
+    @Operation(summary = "AI 知识库流式对话（全库问答）")
+    public SseEmitter knowledgeChatStream(@RequestBody Map<String, String> body) {
+        String query = body.get("query");
+        SseEmitter emitter = new SseEmitter(Duration.ofMinutes(2).toMillis());
+        
+        knowledgeAssistant.answerStream(query)
+            .onNext(token -> {
+                try {
+                    emitter.send(SseEmitter.event().data(token));
+                } catch (Exception e) {
+                    log.error("SSE发送失败", e);
+                }
+            })
+            .onComplete(response -> {
+                emitter.complete();
+            })
+            .onError(error -> {
+                log.error("AI 知识库对话出错", error);
+                emitter.completeWithError(error);
+            })
+            .start();
+            
+        return emitter;
+    }
+
+    /**
+     * AI 提取待办事项
+     */
+    @PostMapping("/tasks/extract")
+    @Operation(summary = "AI 提取待办事项")
+    public Result<List<String>> extractTasks(Authentication authentication, @RequestBody Map<String, String> body) {
+        Long userId = (Long) authentication.getPrincipal();
+        String content = body.get("content");
+        List<String> tasks = aiService.extractTasks(userId, content);
+        return Result.success(tasks);
+    }
+
+    /**
+     * AI 建议笔记关联
+     */
+    @GetMapping("/relations/suggest/{noteId}")
+    @Operation(summary = "AI 建议笔记关联")
+    public Result<List<Note>> suggestRelations(Authentication authentication, @PathVariable Long noteId) {
+        Long userId = (Long) authentication.getPrincipal();
+        List<Note> suggestions = aiService.suggestRelations(userId, noteId);
+        return Result.success(suggestions);
+    }
+
+    /**
+     * AI 语音转写
+     */
+    @PostMapping("/voice/transcribe")
+    @Operation(summary = "AI 语音转写 (Whisper)")
+    public Result<String> transcribe(Authentication authentication, @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        Long userId = (Long) authentication.getPrincipal();
+        try {
+            String text = aiService.transcribe(userId, file.getBytes(), file.getOriginalFilename());
+            return Result.success(text);
+        } catch (Exception e) {
+            log.error("转写失败", e);
+            return Result.error("转写失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * AI OCR 识图
+     */
+    @PostMapping("/vision/ocr")
+    @Operation(summary = "AI OCR 识图 (GPT-4o/Compatible)")
+    public Result<String> ocr(Authentication authentication, @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        Long userId = (Long) authentication.getPrincipal();
+        try {
+            String text = aiService.ocr(userId, file.getBytes(), file.getOriginalFilename());
+            return Result.success(text);
+        } catch (Exception e) {
+            log.error("OCR 失败", e);
+            return Result.error("OCR 识图失败: " + e.getMessage());
+        }
+    }
 
     /**
      * AI对话（同步）
@@ -179,7 +293,30 @@ public class AIController {
     }
 
     /**
-     * 测试AI配置（发送一个简单请求验证API Key有效）
+     * AI 建议笔记标签
+     */
+    @PostMapping("/tags/suggest")
+    @Operation(summary = "AI 建议笔记标签")
+    public Result<List<String>> suggestTags(Authentication authentication, @RequestBody Map<String, String> body) {
+        Long userId = (Long) authentication.getPrincipal();
+        String content = body.get("content");
+        List<String> tags = aiService.suggestTags(userId, content);
+        return Result.success(tags);
+    }
+
+    /**
+     * AI 知识回顾 (Flashback)
+     */
+    @GetMapping("/knowledge/flashback")
+    @Operation(summary = "AI 知识回顾 (寻找被遗忘的灵感)")
+    public Result<List<Map<String, Object>>> getFlashback(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return Result.success(aiService.getFlashback(userId));
+    }
+
+    /**
+     * 测试AI配置
+（发送一个简单请求验证API Key有效）
      *
      * @param request 测试请求（包含provider和apiKey）
      * @return 测试结果

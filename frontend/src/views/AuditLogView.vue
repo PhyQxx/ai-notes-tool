@@ -18,6 +18,10 @@
       <el-button @click="resetFilters">重置</el-button>
     </div>
 
+    <div class="stats-cards" v-if="logs.length > 0">
+      <div ref="chartRef" class="activity-chart"></div>
+    </div>
+
     <el-table :data="logs" v-loading="loading" stripe border>
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="userId" label="用户ID" width="80" />
@@ -47,13 +51,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { queryAuditLogs, type AuditLog } from '@/api/auditLog'
+import * as echarts from 'echarts'
 
 const logs = ref<AuditLog[]>([])
 const loading = ref(false)
 const page = ref(1)
 const total = ref(0)
+const chartRef = ref<HTMLElement | null>(null)
+let chart: echarts.ECharts | null = null
+
 const filters = reactive({ userId: '', action: '', dateRange: null as string[] | null })
 
 function actionLabel(action: string) {
@@ -75,7 +83,43 @@ async function search(p?: number) {
     })
     logs.value = d?.records || []
     total.value = d?.total || 0
+    
+    await nextTick()
+    renderChart()
   } catch { /* ignore */ } finally { loading.value = false }
+}
+
+function renderChart() {
+  if (!chartRef.value || logs.value.length === 0) return
+  if (!chart) chart = echarts.init(chartRef.value)
+  
+  // Group logs by hour or date for trend
+  const stats = new Map<string, number>()
+  logs.value.forEach(log => {
+    const date = log.createdAt?.substring(0, 10) || 'Unknown'
+    stats.set(date, (stats.get(date) || 0) + 1)
+  })
+  
+  const sortedDates = Array.from(stats.keys()).sort()
+  const data = sortedDates.map(date => stats.get(date))
+
+  chart.setOption({
+    title: { text: '操作活跃度趋势', textStyle: { fontSize: 14, fontWeight: 'normal' } },
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: sortedDates },
+    yAxis: { type: 'value' },
+    series: [
+      {
+        name: '操作数',
+        type: 'line',
+        smooth: true,
+        data: data,
+        areaStyle: { opacity: 0.1 },
+        itemStyle: { color: '#8B5CF6' }
+      }
+    ]
+  })
 }
 
 function resetFilters() {
@@ -93,5 +137,19 @@ onMounted(() => search(1))
 .page-header { margin-bottom: 16px; }
 .page-header h2 { margin: 0; font-size: 20px; }
 .filter-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+
+.stats-cards {
+  margin-bottom: 24px;
+  background: var(--el-bg-color);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.activity-chart {
+  height: 200px;
+  width: 100%;
+}
+
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
 </style>

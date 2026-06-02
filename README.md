@@ -434,6 +434,15 @@ npm install
 2. 检查网络连接是否正常
 3. 检查API调用额度是否充足
 
+### 5. Redis 启动报错 ERR unknown command 'FT._LIST'
+
+**问题**: 后端启动时报错 `ERR unknown command 'FT._LIST'`
+
+**解决**:
+1. 本项目使用 Redis Stack 进行向量搜索（RAG），标准 Redis 不支持 `RediSearch` 模块。
+2. **Docker 部署**: 请确保使用 `redis/redis-stack-server` 镜像（已在 `docker-compose.yml` 中配置）。
+3. **本地开发**: 请安装 [Redis Stack](https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/) 或在现有 Redis 中加载 `RediSearch` 模块。
+
 更多问题请查看 [Issue Tracker](https://github.com/yourusername/ai-notes-tool/issues)
 
 ---

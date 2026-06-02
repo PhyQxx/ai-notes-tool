@@ -248,11 +248,11 @@ public class CommentServiceImpl implements CommentService {
         SpaceMember member = spaceMemberMapper.selectOne(memberWrapper);
 
         if (member == null) {
-            throw new BusinessException("不是该空间的成员");
+            throw new BusinessException("您不是该空间的成员，无权访问");
         }
 
         if (member.getStatus() == 0) {
-            throw new BusinessException("账号已被禁用");
+            throw new BusinessException("您在该空间的账号已被禁用");
         }
     }
 

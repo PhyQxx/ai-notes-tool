@@ -94,6 +94,18 @@
         </div>
       </el-card>
 
+      <el-card class="stats-card" shadow="never" v-if="space">
+        <template #header>
+          <div class="card-header">
+            <span>空间活跃度趋势</span>
+            <el-button text @click="initChart">
+              <el-icon><Refresh /></el-icon>
+            </el-button>
+          </div>
+        </template>
+        <div ref="activityChartRef" class="activity-chart"></div>
+      </el-card>
+
       <el-card class="notes-card" shadow="never">
         <template #header>
           <div class="card-header">
@@ -171,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import {
@@ -181,12 +193,14 @@ import {
   SwitchButton,
   MoreFilled,
   Edit,
-  Delete
+  Delete,
+  Refresh
 } from '@element-plus/icons-vue';
 import { useSpaceStore } from '@/stores/space';
 import { useAuthStore } from '@/stores/auth';
 import { updateMemberRole } from '@/api/space';
 import type { SpaceMember } from '@/types';
+import * as echarts from 'echarts';
 
 const route = useRoute();
 const router = useRouter();
@@ -196,6 +210,42 @@ const authStore = useAuthStore();
 const spaceId = computed(() => parseInt(route.params.id as string));
 const currentUserId = authStore.user?.id;
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
+
+const activityChartRef = ref<HTMLElement | null>(null);
+let chart: echarts.ECharts | null = null;
+
+const space = computed(() => spaceStore.currentSpace);
+
+const initChart = async () => {
+  await nextTick();
+  if (!activityChartRef.value) return;
+  if (!chart) chart = echarts.init(activityChartRef.value);
+
+  // Simple stats: Member joined trend
+  const stats = new Map<string, number>();
+  spaceStore.members.forEach(m => {
+    const date = m.joinedAt?.substring(0, 10) || 'Unknown';
+    stats.set(date, (stats.get(date) || 0) + 1);
+  });
+
+  const sortedDates = Array.from(stats.keys()).sort();
+  const data = sortedDates.map(d => stats.get(d));
+
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: sortedDates },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [{
+      name: '新增成员',
+      type: 'line',
+      smooth: true,
+      data: data,
+      areaStyle: { opacity: 0.1 },
+      itemStyle: { color: '#8B5CF6' }
+    }]
+  });
+};
 
 const showInviteDialog = ref(false);
 const showRoleDialog = ref(false);
@@ -368,6 +418,7 @@ onMounted(async () => {
 
     // 加载成员列表
     await spaceStore.fetchMembers(spaceId.value);
+    initChart();
   } catch (error) {
     console.error('加载空间详情失败:', error);
     router.push('/spaces');
@@ -437,41 +488,16 @@ onMounted(async () => {
   }
 
   .members-list {
-    .member-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--el-border-color-light);
+    // ... (existing styles)
+  }
 
-      &:last-child {
-        border-bottom: none;
-      }
+  .stats-card {
+    grid-column: span 2; // Make it full width
+    margin-bottom: 24px;
 
-      .member-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-
-        .member-details {
-          .member-name {
-            font-weight: 500;
-            color: var(--el-text-color-primary);
-            margin-bottom: 4px;
-          }
-
-          .member-email {
-            font-size: 12px;
-            color: var(--el-text-color-secondary);
-          }
-        }
-      }
-
-      .member-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
+    .activity-chart {
+      height: 250px;
+      width: 100%;
     }
   }
 }

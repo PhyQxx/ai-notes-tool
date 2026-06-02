@@ -45,4 +45,9 @@ public class CreateNoteRequest {
      */
     private Object tags;
 
+    /**
+     * 自定义属性
+     */
+    private java.util.Map<String, Object> customAttributes;
+
 }

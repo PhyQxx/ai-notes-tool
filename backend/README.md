@@ -261,7 +261,7 @@ public UserInfo getUserById(Long userId) {
 ```java
 // Controller层
 @RestController
-@RequestMapping("/api/notes")
+@RequestMapping("/notes")
 @RequiredArgsConstructor
 public class NoteController {
 

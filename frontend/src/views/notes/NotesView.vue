@@ -20,6 +20,18 @@
           <el-option label="创建时间" value="createdAt" />
           <el-option label="标题" value="title" />
         </el-select>
+
+        <el-radio-group v-model="viewMode" size="small">
+          <el-radio-button label="grid">
+            <el-icon><Grid /></el-icon>
+          </el-radio-button>
+          <el-radio-button label="table">
+            <el-icon><Memo /></el-icon>
+          </el-radio-button>
+          <el-radio-button label="kanban">
+            <el-icon><DataBoard /></el-icon>
+          </el-radio-button>
+        </el-radio-group>
       </div>
 
       <div class="toolbar-right">
@@ -39,6 +51,25 @@
       v-model="selectedTags"
       style="margin-bottom: 16px;"
     />
+
+    <!-- 最近查看 -->
+    <div v-if="recentViews.length > 0" class="recent-views-section">
+      <div class="section-title">
+        <el-icon><Clock /></el-icon>
+        最近查看
+      </div>
+      <div class="recent-list">
+        <div
+          v-for="note in recentViews"
+          :key="note.id"
+          class="recent-item"
+          @click="handleOpenNote(note.id)"
+        >
+          <el-icon><Document /></el-icon>
+          <span class="item-title">{{ note.title }}</span>
+        </div>
+      </div>
+    </div>
 
     <!-- 批量操作栏 -->
     <div v-if="selectedNoteIds.length > 0" class="batch-bar">
@@ -89,20 +120,38 @@
 
     <el-empty v-else-if="tagFilteredNotes.length === 0" description="暂无笔记" />
 
-    <div v-else class="note-grid">
-      <div
-        v-for="note in tagFilteredNotes"
-        :key="note.id"
-        class="note-card"
-        :class="{ 'note-card--selected': selectedNoteIds.includes(note.id) }"
-        @click="handleOpenNote(note.id)"
-      >
-        <NoteCard
-          :note="note"
-          @toggle-favorite="handleToggleFavorite(note.id)"
-        />
+    <template v-else>
+      <!-- 网格视图 -->
+      <div v-if="viewMode === 'grid'" class="note-grid">
+        <div
+          v-for="note in tagFilteredNotes"
+          :key="note.id"
+          class="note-card"
+          :class="{ 'note-card--selected': selectedNoteIds.includes(note.id) }"
+          @click="handleOpenNote(note.id)"
+        >
+          <NoteCard
+            :note="note"
+            @toggle-favorite="handleToggleFavorite(note.id)"
+          />
+        </div>
       </div>
-    </div>
+
+      <!-- 表格视图 (Database Style) -->
+      <NoteTableView
+        v-else-if="viewMode === 'table'"
+        :notes="tagFilteredNotes"
+        @open="handleOpenNote"
+      />
+
+      <!-- 看板视图 (Project Management) -->
+      <NoteKanbanView
+        v-else
+        :notes="tagFilteredNotes"
+        @open="handleOpenNote"
+        @update-note="handleNoteUpdate"
+      />
+    </template>
 
     <div v-if="loadingMore" class="load-more">
       <el-icon class="is-loading" :size="20" /><span>加载中...</span>
@@ -115,12 +164,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useNoteStore } from '@/stores/note';
 import NoteCard from '@/components/common/NoteCard.vue';
 import TemplateSelectDialog from '@/components/template/TemplateSelectDialog.vue';
 import TagCloud from '@/components/tag/TagCloud.vue';
 import TagFilterPanel from '@/components/tag/TagFilterPanel.vue';
+import NoteTableView from '@/components/note/NoteTableView.vue';
+import NoteKanbanView from '@/components/note/NoteKanbanView.vue';
 import { fullTextSearch } from '@/api/note';
 import { getTagCloud, getTagColors, batchAddTags } from '@/api/tag';
 import type { TagCloudItem, TagColor } from '@/api/tag';
@@ -132,6 +183,7 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const noteStore = useNoteStore();
 
 const searchKeyword = ref('');
@@ -139,10 +191,24 @@ const searchScope = ref('all');
 const searchResults = ref<any[]>([]);
 const sortBy = ref('updatedAt');
 const folderFilter = ref(0);
+const viewMode = ref<'grid' | 'table' | 'kanban'>('grid');
 const scrollContainer = ref<HTMLElement | null>(null);
 const initialLoading = ref(false);
 const loadingMore = ref(false);
 const hasMore = ref(true);
+
+const recentViews = ref<any[]>([]);
+
+const loadRecentViews = () => {
+  const data = localStorage.getItem('recent_notes');
+  if (data) {
+    try {
+      recentViews.value = JSON.parse(data);
+    } catch (e) {
+      recentViews.value = [];
+    }
+  }
+};
 
 // Tag management
 const tagCloudData = ref<TagCloudItem[]>([]);
@@ -384,6 +450,13 @@ const handleOpenNote = (id: number) => {
   router.push(`/notes/${id}`);
 };
 
+const handleNoteUpdate = () => {
+  // 仅刷新当前列表，不重置分页
+  // 或者直接在本地 store 更新（noteStore.updateNote 已经做了）
+  // 这里可以触发一个轻量级的界面刷新
+  loadTagCloud();
+};
+
 const handleToggleFavorite = async (id: number) => {
   try {
     await noteStore.toggleFavorite(id);
@@ -399,11 +472,20 @@ watch(() => props.mode, () => {
   fetchInitialNotes();
 });
 
+watch(() => route.query.folderId, (newFolderId) => {
+  folderFilter.value = newFolderId ? Number(newFolderId) : 0;
+  fetchInitialNotes();
+});
+
 onMounted(async () => {
+  if (route.query.folderId) {
+    folderFilter.value = Number(route.query.folderId);
+  }
   await noteStore.fetchFolders();
   fetchInitialNotes();
   loadTagCloud();
   loadTagColors();
+  loadRecentViews();
 });
 </script>
 
@@ -550,6 +632,62 @@ onMounted(async () => {
     margin-bottom: var(--space-4);
     font-size: var(--font-size-body);
     border: 1px solid var(--brand-primary-border);
+  }
+
+  .recent-views-section {
+    margin-bottom: 24px;
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--el-text-color-secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .recent-list {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+
+      &::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      .recent-item {
+        flex: 0 0 180px;
+        background: var(--el-bg-color);
+        border: 1px solid var(--el-border-color-lighter);
+        border-radius: 8px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          border-color: var(--el-color-primary);
+          background: var(--el-color-primary-light-9);
+          transform: translateY(-2px);
+        }
+
+        .el-icon {
+          color: var(--el-color-primary);
+        }
+
+        .item-title {
+          font-size: 13px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          color: var(--el-text-color-primary);
+        }
+      }
+    }
   }
 }
 

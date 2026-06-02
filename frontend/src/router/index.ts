@@ -85,6 +85,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/GraphView.vue')
       },
       {
+        path: 'canvas',
+        name: 'CanvasList',
+        component: () => import('@/views/canvas/CanvasListView.vue')
+      },
+      {
+        path: 'canvas/:id',
+        name: 'CanvasDetail',
+        component: () => import('@/views/canvas/CanvasView.vue')
+      },
+      {
         path: 'audit-logs',
         name: 'AuditLogs',
         component: () => import('@/views/AuditLogView.vue')

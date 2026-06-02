@@ -36,8 +36,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserMapper userMapper;
+    private final com.ainotes.service.ApiKeyService apiKeyService;
 
     private static final String HEADER_NAME = "Authorization";
+    private static final String API_KEY_HEADER = "X-API-KEY";
     private static final String TOKEN_PREFIX = "Bearer ";
     private static final String NEW_TOKEN_HEADER = "X-New-Token";
     /** 即将过期阈值：30分钟 */
@@ -47,6 +49,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        // 1. 尝试从 Header 中提取 API Key
+        String apiKey = request.getHeader(API_KEY_HEADER);
+        if (apiKey != null) {
+            Long userId = apiKeyService.getUserIdByApiKey(apiKey);
+            if (userId != null) {
+                setAuthentication(userId);
+                filterChain.doFilter(request, response);
+                return;
+            }
+        }
+
+        // 2. 尝试从 Authorization 中提取 JWT Token
         String token = extractToken(request);
 
         if (token != null) {

@@ -97,4 +97,16 @@ public class NotificationServiceImpl implements NotificationService {
                         .set(Notification::getIsRead, true)
         );
     }
+
+    @Override
+    public void sendNotification(Long userId, String title, String content, String type, String link) {
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setTitle(title);
+        notification.setContent(content);
+        notification.setType(type);
+        notification.setLink(link);
+        notification.setCreatedAt(java.time.LocalDateTime.now());
+        create(notification);
+    }
 }

@@ -129,6 +129,59 @@ a {
   }
 }
 
+// ===== Vditor 暗色模式适配 =====
+html.dark {
+  .vditor {
+    background-color: var(--bg-card) !important;
+    border-color: var(--el-border-color) !important;
+    color: var(--text-primary) !important;
+
+    --panel-background-color: var(--bg-card);
+    --toolbar-background-color: var(--bg-card);
+    --textarea-background-color: var(--bg-card);
+
+    .vditor-toolbar {
+      background-color: var(--bg-card) !important;
+      border-bottom-color: var(--el-border-color) !important;
+      
+      .vditor-tooltipped {
+        color: var(--text-regular) !important;
+        &:hover {
+          background-color: var(--bg-hover) !important;
+          color: var(--brand-primary) !important;
+        }
+      }
+    }
+
+    .vditor-content {
+      background-color: var(--bg-card) !important;
+    }
+
+    .vditor-reset {
+      background-color: var(--bg-card) !important;
+      color: var(--text-primary) !important;
+      
+      blockquote {
+        background-color: var(--el-fill-color-dark) !important;
+        border-left-color: var(--brand-primary) !important;
+      }
+      
+      code {
+        background-color: var(--el-fill-color-dark) !important;
+      }
+    }
+
+    .vditor-sv, .vditor-ir, .vditor-wysiwyg {
+      background-color: var(--bg-card) !important;
+    }
+    
+    .vditor-outline {
+      background-color: var(--bg-card) !important;
+      border-left-color: var(--el-border-color) !important;
+    }
+  }
+}
+
 // ===== 响应式断点 =====
 
 // sm (640px)

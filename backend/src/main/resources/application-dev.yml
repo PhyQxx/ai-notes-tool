@@ -2,7 +2,7 @@ spring:
   # Database Configuration
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://mysql.pnkx.top:13306/ai_notes?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/ai_notes?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8}
     username: root
     password: 123456
 
@@ -35,6 +35,8 @@ jwt:
 
 # AI Configuration
 ai:
+  rag:
+    enabled: false
   deepseek:
     api-key:
   glm:

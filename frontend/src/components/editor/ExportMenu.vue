@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { exportMarkdown, exportPDF, exportWord, downloadFile } from '@/api/export';
 
 const props = defineProps<{
@@ -38,6 +38,21 @@ const loading = ref(false);
 const handleExport = async (type: string) => {
   if (loading.value) return;
 
+  let password = '';
+  if (type === 'pdf' || type === 'word') {
+    try {
+      const { value } = await ElMessageBox.prompt('如需加密，请输入导出文件的访问密码（留空则不加密）', '加密导出', {
+        confirmButtonText: '导出',
+        cancelButtonText: '取消',
+        inputPlaceholder: '请输入密码',
+        inputType: 'password'
+      });
+      password = value || '';
+    } catch {
+      return; // User cancelled
+    }
+  }
+
   loading.value = true;
   try {
     let blob: Blob;
@@ -49,11 +64,11 @@ const handleExport = async (type: string) => {
         filename = `${props.noteTitle}.md`;
         break;
       case 'pdf':
-        blob = await exportPDF(props.noteId);
+        blob = await exportPDF(props.noteId, password);
         filename = `${props.noteTitle}.pdf`;
         break;
       case 'word':
-        blob = await exportWord(props.noteId);
+        blob = await exportWord(props.noteId, password);
         filename = `${props.noteTitle}.docx`;
         break;
       default:
@@ -61,7 +76,7 @@ const handleExport = async (type: string) => {
     }
 
     downloadFile(blob, filename);
-    ElMessage.success('导出成功');
+    ElMessage.success('导出成功' + (password ? '（已加密）' : ''));
   } catch (error) {
     console.error('导出失败:', error);
     ElMessage.error('导出失败');

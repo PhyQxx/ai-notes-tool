@@ -9,13 +9,11 @@
         @click="toggleRecording"
       />
     </el-tooltip>
-    <div v-if="isRecording" class="recording-indicator">
-      <span class="pulse" />
-      <span class="recording-text">{{ t('voice.listening') }}</span>
+    <div v-if="isRecording || isTranscribing" class="recording-indicator">
+      <span v-if="isRecording" class="pulse" />
+      <el-icon v-else class="is-loading"><Loading /></el-icon>
+      <span class="recording-text">{{ isRecording ? t('voice.listening') : '正在转写...' }}</span>
       <span class="transcript-text">{{ transcript || '...' }}</span>
-      <el-button v-if="finalTranscript" type="primary" size="small" @click="handleInsert">
-        {{ t('note.insertToEditor') }}
-      </el-button>
     </div>
     <el-alert
       v-if="notSupported"
@@ -30,8 +28,9 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
-import { Microphone } from '@element-plus/icons-vue'
+import { Microphone, Loading } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
+import { ElMessage } from 'element-plus'
 
 const { t } = useI18n()
 const emit = defineEmits<{
@@ -39,89 +38,99 @@ const emit = defineEmits<{
 }>()
 
 const isRecording = ref(false)
+const isTranscribing = ref(false)
 const transcript = ref('')
-const finalTranscript = ref('')
 const notSupported = ref(false)
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let recognition: any = null
+let mediaRecorder: MediaRecorder | null = null
+let audioChunks: Blob[] = []
 
-const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-if (!SpeechRecognition) {
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
   notSupported.value = true
 }
 
-function toggleRecording() {
-  if (!SpeechRecognition) {
-    notSupported.value = true
-    return
-  }
-
+async function toggleRecording() {
   if (isRecording.value) {
     stopRecording()
   } else {
-    startRecording()
+    await startRecording()
   }
 }
 
-function startRecording() {
-  recognition = new SpeechRecognition()
-  recognition.continuous = true
-  recognition.interimResults = true
-  recognition.lang = localStorage.getItem('locale') === 'en-US' ? 'en-US' : 'zh-CN'
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    mediaRecorder = new MediaRecorder(stream)
+    audioChunks = []
 
-  transcript.value = ''
-  finalTranscript.value = ''
-  isRecording.value = true
-
-  recognition.onresult = (event: { results: { isFinal: boolean; transcript: string }[] }) => {
-    let interim = ''
-    let final = ''
-    for (let i = 0; i < event.results.length; i++) {
-      const result = event.results[i]
-      if (result.isFinal) {
-        final += result.transcript
-      } else {
-        interim += result.transcript
-      }
+    mediaRecorder.ondataavailable = (event) => {
+      audioChunks.push(event.data)
     }
-    transcript.value = interim
-    if (final) {
-      finalTranscript.value += final
+
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
+      await transcribeAudio(audioBlob)
     }
-  }
 
-  recognition.onerror = () => {
-    isRecording.value = false
+    mediaRecorder.start()
+    isRecording.value = true
+    transcript.value = '正在录音...'
+  } catch (err) {
+    console.error('无法开启麦克风', err)
+    ElMessage.error('无法开启麦克风，请检查权限')
   }
-
-  recognition.onend = () => {
-    isRecording.value = false
-  }
-
-  recognition.start()
 }
 
 function stopRecording() {
-  if (recognition) {
-    recognition.stop()
+  if (mediaRecorder && isRecording.value) {
+    mediaRecorder.stop()
+    mediaRecorder.stream.getTracks().forEach(track => track.stop())
+    isRecording.value = false
   }
-  isRecording.value = false
+}
+
+async function transcribeAudio(blob: Blob) {
+  isTranscribing.value = true
+  transcript.value = '正在转换文字...'
+  
+  try {
+    const formData = new FormData()
+    formData.append('file', blob, 'recording.webm')
+    
+    const token = localStorage.getItem('token')
+    const response = await fetch('/api/ai/voice/transcribe', {
+      method: 'POST',
+      headers: { 'Authorization': token ? `Bearer ${token}` : '' },
+      body: formData
+    })
+    
+    const result = await response.json()
+    if (result.code === 200 && result.data) {
+      transcript.value = result.data
+      handleInsert()
+    } else {
+      ElMessage.error(result.message || '转写失败')
+      transcript.value = ''
+    }
+  } catch (error) {
+    console.error('转写失败', error)
+    ElMessage.error('语音转写失败')
+    transcript.value = ''
+  } finally {
+    isTranscribing.value = false
+  }
 }
 
 function handleInsert() {
-  if (finalTranscript.value) {
-    emit('transcript', finalTranscript.value)
-    finalTranscript.value = ''
-    transcript.value = ''
+  if (transcript.value) {
+    emit('transcript', transcript.value)
+    // ElMessage.success('已插入转写内容')
+    setTimeout(() => { transcript.value = '' }, 2000)
   }
 }
 
 onUnmounted(() => {
-  if (recognition) {
-    recognition.stop()
-  }
+  stopRecording()
 })
 </script>
 

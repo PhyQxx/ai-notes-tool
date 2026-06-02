@@ -12,6 +12,122 @@ import type {
 } from '../types';
 
 /**
+ * 笔记语义聚类
+ */
+export function getNoteClusters(k: number = 5): Promise<any[]> {
+  return http.get('/ai/clusters', { params: { k } });
+}
+
+/**
+ * AI 提取待办事项
+ */
+export function extractTasks(content: string): Promise<string[]> {
+  return http.post('/ai/tasks/extract', { content });
+}
+
+/**
+ * AI 建议笔记关联
+ */
+export function suggestRelations(noteId: number): Promise<any[]> {
+  return http.get(`/ai/relations/suggest/${noteId}`);
+}
+
+/**
+ * AI 知识冲突检测
+ */
+export function detectConflicts(): Promise<any[]> {
+  return http.get('/ai/knowledge/conflicts');
+}
+
+/**
+ * AI 知识回顾 (Flashback)
+ */
+export function getFlashback(): Promise<any[]> {
+  return http.get('/ai/knowledge/flashback');
+}
+
+/**
+ * AI 建议笔记标签
+ */
+export function suggestTags(content: string): Promise<string[]> {
+  return http.post('/ai/tags/suggest', { content });
+}
+
+/**
+ * AI OCR 识图
+ */
+export function ocr(file: File): Promise<{ data: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return http.post('/ai/vision/ocr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+}
+
+/**
+ * AI 知识库对话（全库问答）
+ */
+export function knowledgeChat(query: string): Promise<{ answer: string }> {
+  return http.post('/ai/knowledge/chat', { query });
+}
+
+/**
+ * AI 知识库流式对话
+ */
+export function knowledgeChatStream(
+  query: string,
+  onMessage: (msg: string) => void,
+  onDone: () => void,
+  onError: (err: Error) => void,
+  signal?: AbortSignal
+): AbortController | null {
+  const token = localStorage.getItem('token');
+  const controller = new AbortController();
+  const effectiveSignal = signal || controller.signal;
+
+  fetch('/api/ai/knowledge/chat/stream', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : ''
+    },
+    body: JSON.stringify({ query }),
+    signal: effectiveSignal
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('无法读取响应流');
+      const decoder = new TextDecoder();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          // Split by "data: " since backend sends it in SSE format or raw tokens?
+          // Based on AIController, it sends token directly in data field of event
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              onMessage(line.substring(5));
+            } else if (line.trim()) {
+              onMessage(line);
+            }
+          }
+        }
+        onDone();
+      } catch (error) {
+        onError(error as Error);
+      }
+    })
+    .catch((error) => {
+      if ((error as Error).name !== 'AbortError') onError(error);
+    });
+
+  return controller;
+}
+
+/**
  * AI对话
  */
 export function chat(data: AIChatRequest): Promise<{ conversationId: number; message: string }> {

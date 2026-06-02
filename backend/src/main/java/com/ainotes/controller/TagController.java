@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -29,20 +30,14 @@ public class TagController {
     private static final String TAG_CLOUD_CACHE_PREFIX = "tags:cloud:";
     private static final long TAG_CACHE_TTL_MINUTES = 5;
 
-    /**
-     * 获取所有标签颜色配置（供标签管理页面使用）
-     */
-    @GetMapping
-    public Result<List<TagColor>> listTags() {
-        return Result.success(tagColorMapper.selectList(null));
-    }
-
     @GetMapping("/cloud")
     @SuppressWarnings("unchecked")
     public Result<List<Map<String, Object>>> getTagCloud(
-            @RequestParam(required = false) Long spaceId) {
-        // 尝试从 Redis 缓存获取
-        String cacheKey = TAG_CLOUD_CACHE_PREFIX + (spaceId != null ? spaceId : "global");
+            @RequestParam(required = false) Long spaceId,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        // 尝试从 Redis 缓存获取，加上 userId 前缀保证隔离
+        String cacheKey = TAG_CLOUD_CACHE_PREFIX + userId + ":" + (spaceId != null ? spaceId : "global");
         try {
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached instanceof List) {
@@ -52,8 +47,9 @@ public class TagController {
             log.warn("标签云缓存读取失败", e);
         }
 
-        // 查询数据库
+        // 查询数据库，增加 userId 过滤
         LambdaQueryWrapper<Note> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Note::getUserId, userId); // 核心修复：只查当前用户的笔记
         wrapper.isNotNull(Note::getTags).ne(Note::getTags, "");
         if (spaceId != null) {
             wrapper.eq(Note::getSpaceId, spaceId);
@@ -93,16 +89,22 @@ public class TagController {
     }
 
     @GetMapping("/colors")
-    public Result<List<TagColor>> getTagColors() {
-        return Result.success(tagColorMapper.selectList(null));
+    public Result<List<TagColor>> getTagColors(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        // 应该根据创建者过滤，或者返回公共的+自己的
+        return Result.success(tagColorMapper.selectList(
+                new LambdaQueryWrapper<TagColor>().eq(TagColor::getCreatedBy, userId)));
     }
 
     @PutMapping("/colors")
-    public Result<Void> setTagColors(@RequestBody List<TagColor> colors) {
+    public Result<Void> setTagColors(@RequestBody List<TagColor> colors, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
         for (TagColor tc : colors) {
             if (tc.getName() == null || tc.getColor() == null) continue;
             TagColor existing = tagColorMapper.selectOne(
-                    new LambdaQueryWrapper<TagColor>().eq(TagColor::getName, tc.getName()));
+                    new LambdaQueryWrapper<TagColor>()
+                            .eq(TagColor::getName, tc.getName())
+                            .eq(TagColor::getCreatedBy, userId));
             if (existing != null) {
                 existing.setColor(tc.getColor());
                 tagColorMapper.updateById(existing);
@@ -110,6 +112,7 @@ public class TagController {
                 TagColor nc = new TagColor();
                 nc.setName(tc.getName());
                 nc.setColor(tc.getColor());
+                nc.setCreatedBy(userId);
                 tagColorMapper.insert(nc);
             }
         }
@@ -117,10 +120,13 @@ public class TagController {
     }
 
     @PostMapping("/batch")
-    public Result<Void> batchAddTags(@RequestBody BatchTagRequest req) {
+    public Result<Void> batchAddTags(@RequestBody BatchTagRequest req, Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
         for (Long noteId : req.getNoteIds()) {
             Note note = noteMapper.selectById(noteId);
-            if (note == null) continue;
+            // 核心修复：检查笔记所有权
+            if (note == null || !note.getUserId().equals(userId)) continue;
+            
             Set<String> tagSet = new LinkedHashSet<>();
             if (note.getTags() != null && !note.getTags().isEmpty()) {
                 Collections.addAll(tagSet, note.getTags().split(","));

@@ -52,6 +52,15 @@
           <el-button
             v-if="!isCurrentVersion(version)"
             text
+            type="warning"
+            size="small"
+            @click="handleCompareVersion(version)"
+          >
+            对比
+          </el-button>
+          <el-button
+            v-if="!isCurrentVersion(version)"
+            text
             type="primary"
             size="small"
             @click="handleRestoreVersion(version)"
@@ -76,6 +85,26 @@
         </div>
       </div>
     </div>
+
+    <!-- 对比版本对话框 -->
+    <el-dialog
+      v-model="compareDialogVisible"
+      :title="`版本对比: #${compareVersion?.versionNo} vs 当前`"
+      width="90%"
+      top="5vh"
+      destroy-on-close
+    >
+      <div class="compare-dialog-content">
+        <VersionCompare
+          :old-content="compareVersion?.content || ''"
+          :new-content="currentNote?.content || ''"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="compareDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="handleRestoreVersion(compareVersion!)">恢复此版本</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 查看版本对话框 -->
     <el-dialog
@@ -125,6 +154,7 @@ import { ref, computed, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useNoteStore } from '@/stores/note';
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue';
+import VersionCompare from './VersionCompare.vue';
 import type { NoteVersion } from '@/types';
 
 const props = defineProps<{
@@ -151,6 +181,9 @@ const currentNote = computed(() => noteStore.currentNote);
 
 const viewDialogVisible = ref(false);
 const viewVersion = ref<NoteVersion | null>(null);
+
+const compareDialogVisible = ref(false);
+const compareVersion = ref<NoteVersion | null>(null);
 
 const snapshotDialogVisible = ref(false);
 const snapshotForm = ref({
@@ -189,6 +222,11 @@ const formatTime = (time: string) => {
 const handleViewVersion = (version: NoteVersion) => {
   viewVersion.value = version;
   viewDialogVisible.value = true;
+};
+
+const handleCompareVersion = (version: NoteVersion) => {
+  compareVersion.value = version;
+  compareDialogVisible.value = true;
 };
 
 const handleRestoreVersion = async (version: NoteVersion) => {

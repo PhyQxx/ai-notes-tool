@@ -8,6 +8,7 @@ import com.ainotes.mapper.NoteMapper;
 import com.ainotes.service.NoteLinkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -29,6 +30,7 @@ public class NoteLinkServiceImpl implements NoteLinkService {
 
     private static final Pattern LINK_PATTERN = Pattern.compile("\\[\\[(.+?)\\]\\]");
 
+    @Async
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void syncNoteLinks(Long noteId, String content, String title) {

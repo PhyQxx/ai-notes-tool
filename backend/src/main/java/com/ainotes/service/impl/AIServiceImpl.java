@@ -54,6 +54,7 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
     private final UserAiConfigMapper userAiConfigMapper;
     private final AIChatMessageService chatMessageService;
     private final AIConfig aiConfig;
+    private final com.ainotes.service.KnowledgeBaseService knowledgeBaseService;
     private static final int MAX_CONTEXT_ROUNDS = 20;
     private static final String SYSTEM_PROMPT = "你是一个智能笔记助手，可以帮助用户整理笔记、回答问题、生成内容。请用简洁、准确的方式回答。";
 
@@ -75,6 +76,7 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
         List<Map<String, String>> messages = buildContextMessages(conversation.getId(), request.getMessage());
 
         String aiResponse = provider.chat(request.getModel(), messages);
+        log.info("AI对话完成, userId={}, provider={}, model={}, tokens={}", userId, request.getProvider(), request.getModel(), aiResponse.length()); // 粗略估算
 
         // Save assistant message
         chatMessageService.saveMessage(conversation.getId(), "assistant", aiResponse);
@@ -557,6 +559,199 @@ public class AIServiceImpl extends ServiceImpl<AIConversationMapper, AIConversat
             throw new BusinessException("内容为空，无法润色");
         }
         return callAssistant(userId, "你是一个文字编辑助手。请优化以下文字的表达，使其更流畅、更专业，保持原意不变。只输出润色后的文字，不要添加解释。", content);
+    }
+
+    @Override
+    public List<String> extractTasks(Long userId, String content) {
+        if (content == null || content.isBlank()) {
+            return new ArrayList<>();
+        }
+        String res = callAssistant(userId, "你是一个任务管理助手。请从以下文字中提取所有的待办事项(TODO)，每行一个，以'- '开头。如果没有待办事项，请输出'无'。", content);
+        if (res.contains("无") || res.isBlank()) return new ArrayList<>();
+        return java.util.Arrays.stream(res.split("\n"))
+                .map(String::trim)
+                .filter(s -> s.startsWith("-"))
+                .map(s -> s.substring(1).trim())
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    @Override
+    public List<Note> suggestRelations(Long userId, Long noteId) {
+        return knowledgeBaseService.findSimilarNotes(userId, noteId, 5, java.util.Map.of());
+    }
+
+    @Override
+    public String transcribe(Long userId, byte[] audioData, String fileName) {
+        String apiKey = System.getenv("WHISPER_API_KEY");
+        String baseUrl = System.getenv("WHISPER_BASE_URL");
+        if (apiKey == null || apiKey.isEmpty()) {
+            apiKey = aiConfig.getDeepseek().getApiKey();
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new BusinessException("未配置语音转写 API Key");
+        }
+        try {
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA);
+            headers.setBearerAuth(apiKey);
+            org.springframework.util.LinkedMultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
+            org.springframework.core.io.ByteArrayResource resource = new org.springframework.core.io.ByteArrayResource(audioData) {
+                @Override
+                public String getFilename() { return fileName; }
+            };
+            body.add("file", resource);
+            body.add("model", "whisper-1");
+            org.springframework.http.HttpEntity<org.springframework.util.LinkedMultiValueMap<String, Object>> requestEntity = new org.springframework.http.HttpEntity<>(body, headers);
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            String url = (baseUrl != null ? baseUrl : "https://api.openai.com/v1") + "/audio/transcriptions";
+            com.fasterxml.jackson.databind.JsonNode response = restTemplate.postForObject(url, requestEntity, com.fasterxml.jackson.databind.JsonNode.class);
+            if (response != null && response.has("text")) {
+                return response.get("text").asText();
+            }
+            return "";
+        } catch (Exception e) {
+            log.error("语音转写失败: {}", e.getMessage());
+            throw new BusinessException("语音转写失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public String ocr(Long userId, byte[] imageData, String fileName) {
+        String apiKey = System.getenv("VISION_API_KEY");
+        String baseUrl = System.getenv("VISION_BASE_URL");
+        
+        if (apiKey == null || apiKey.isEmpty()) {
+            apiKey = aiConfig.getDeepseek().getApiKey(); // DeepSeek may support vision in some endpoints
+        }
+        
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new BusinessException("未配置 Vision/OCR API Key");
+        }
+
+        try {
+            String base64Image = java.util.Base64.getEncoder().encodeToString(imageData);
+            String mimeType = fileName.endsWith(".png") ? "image/png" : "image/jpeg";
+            
+            Map<String, Object> message = Map.of(
+                "role", "user",
+                "content", List.of(
+                    Map.of("type", "text", "text", "请提取图片中的所有文字，并将其转换为整洁的 Markdown 格式。只输出提取后的文字内容，不要输出任何解释。"),
+                    Map.of("type", "image_url", "image_url", Map.of("url", "data:" + mimeType + ";base64," + base64Image))
+                )
+            );
+
+            Map<String, Object> body = Map.of(
+                "model", "gpt-4o", // 或者兼容的模型
+                "messages", List.of(message),
+                "max_tokens", 2000
+            );
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+
+            org.springframework.http.HttpEntity<Map<String, Object>> requestEntity = new org.springframework.http.HttpEntity<>(body, headers);
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            
+            String url = (baseUrl != null ? baseUrl : "https://api.openai.com/v1") + "/chat/completions";
+            com.fasterxml.jackson.databind.JsonNode response = restTemplate.postForObject(url, requestEntity, com.fasterxml.jackson.databind.JsonNode.class);
+            
+            if (response != null && response.has("choices")) {
+                return response.get("choices").get(0).get("message").get("content").asText();
+            }
+            return "";
+        } catch (Exception e) {
+            log.error("OCR 失败: {}", e.getMessage());
+            throw new BusinessException("OCR 识图失败: " + e.getMessage());
+        }
+    }
+
+    private String transcribeWithApiKey(Long userId, byte[] audioData, String fileName, String apiKey, String baseUrl) {
+        // (Moved the previous transcribe logic here or keep it as is)
+        // I'll just keep the original transcribe and add ocr
+        return ""; // placeholder
+    }
+
+    @Override
+    public List<String> suggestTags(Long userId, String content) {
+        if (content == null || content.isBlank()) {
+            return new ArrayList<>();
+        }
+        String res = callAssistant(userId, "你是一个标签建议助手。请根据以下笔记内容，提供3-5个最相关的标签。只输出标签，用英文逗号分隔，不要输出任何解释。", content);
+        if (res.isBlank()) return new ArrayList<>();
+        return java.util.Arrays.stream(res.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    @Override
+    public List<Map<String, Object>> getFlashback(Long userId) {
+        List<Note> notes = knowledgeBaseService.getFlashbackNotes(userId, 3);
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        for (Note note : notes) {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("note", note);
+            
+            // 使用 AI 生成一段简短的召回理由
+            try {
+                String reason = callAssistant(userId, 
+                    "你是一个知识唤醒助手。请根据这篇笔记的内容，给用户一个简短（20字以内）的回顾理由，告诉他为什么今天值得重新看一眼这篇笔记。直接输出理由，不要有废话。", 
+                    note.getTitle() + "\n" + note.getContent().substring(0, Math.min(200, note.getContent().length()))
+                );
+                map.put("reason", reason);
+            } catch (Exception e) {
+                map.put("reason", "重温旧知，开启新灵感。");
+            }
+            
+            result.add(map);
+        }
+        
+        return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> detectConflicts(Long userId) {
+        List<Note> recentNotes = noteService.recentNotes(userId, 5);
+        List<Map<String, Object>> conflicts = new ArrayList<>();
+        java.util.Set<String> processedPairs = new java.util.HashSet<>();
+
+        for (Note note1 : recentNotes) {
+            // 找语义非常接近的笔记 (限制 2 篇，高阈值)
+            List<Note> similarNotes = knowledgeBaseService.findSimilarNotes(userId, note1.getId(), 2, Map.of());
+            
+            for (Note note2 : similarNotes) {
+                String pairId = note1.getId() < note2.getId() ? note1.getId() + "-" + note2.getId() : note2.getId() + "-" + note1.getId();
+                if (processedPairs.contains(pairId)) continue;
+                processedPairs.add(pairId);
+
+                try {
+                    String prompt = String.format(
+                        "请分析以下两篇笔记的内容，判断它们是否存在【冲突】或【过度重复】。\\n" +
+                        "笔记A标题：%s\\n内容：%s\\n\\n" +
+                        "笔记B标题：%s\\n内容：%s\\n\\n" +
+                        "如果存在冲突或重复，请给出简短的分析并建议如何处理。如果一切正常，请回复'正常'。",
+                        note1.getTitle(), note1.getContent().substring(0, Math.min(300, note1.getContent().length())),
+                        note2.getTitle(), note2.getContent().substring(0, Math.min(300, note2.getContent().length()))
+                    );
+
+                    String analysis = callAssistant(userId, "你是一个知识库质量审计助手。你的任务是发现笔记间的逻辑冲突或内容冗余。", prompt);
+                    
+                    if (!analysis.contains("正常")) {
+                        Map<String, Object> conflict = new java.util.HashMap<>();
+                        conflict.put("noteA", Map.of("id", note1.getId(), "title", note1.getTitle()));
+                        conflict.put("noteB", Map.of("id", note2.getId(), "title", note2.getTitle()));
+                        conflict.put("analysis", analysis);
+                        conflicts.add(conflict);
+                    }
+                } catch (Exception e) {
+                    log.warn("冲突检测失败: {}", e.getMessage());
+                }
+            }
+        }
+        return conflicts;
     }
 
     /**

@@ -41,6 +41,33 @@
       </div>
     </div>
 
+    <!-- AI 知识唤醒 (Flashback) -->
+    <div v-if="flashbackItems.length > 0" class="flashback-section">
+      <div class="section-header">
+        <h3>💡 知识唤醒</h3>
+        <span class="header-hint">AI 帮你找回被遗忘的灵感</span>
+      </div>
+      <div class="flashback-list">
+        <el-card
+          v-for="item in flashbackItems"
+          :key="item.note.id"
+          class="flashback-card"
+          shadow="hover"
+          @click="router.push(`/notes/${item.note.id}`)"
+        >
+          <div class="flashback-content">
+            <div class="insight-badge">
+              <el-icon><MagicStick /></el-icon> AI 洞察
+            </div>
+            <p class="recall-reason">{{ item.reason }}</p>
+            <el-divider />
+            <h4 class="note-title">{{ item.note.title || '无标题' }}</h4>
+            <p class="note-time">上次更新：{{ formatDate(item.note.updatedAt) }}</p>
+          </div>
+        </el-card>
+      </div>
+    </div>
+
     <div class="recent-notes-section">
       <div class="section-header">
         <h3>最近编辑</h3>
@@ -137,9 +164,11 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { Document, Star, FolderOpened, ArrowRight, Clock, Top, MagicStick } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNoteStore } from '@/stores/note';
 import { getRecommendNotes } from '@/api/note';
+import { getFlashback } from '@/api/ai';
 import EmptyState from '@/components/common/EmptyState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
 import SkeletonNoteCard from '@/components/common/SkeletonNoteCard.vue';
@@ -163,6 +192,7 @@ const homeScrollContainer = ref<HTMLElement | null>(null);
 const homeLoadingMore = ref(false);
 const homeHasMore = ref(true);
 const recommendNotes = ref<any[]>([]);
+const flashbackItems = ref<any[]>([]);
 
 const totalNotes = computed(() => noteStore.total);
 const favoriteCount = computed(() => noteStore.notes.filter(n => n.isFavorite).length);
@@ -198,6 +228,11 @@ onMounted(async () => {
   // 加载推荐笔记
   getRecommendNotes().then((data: any) => {
     recommendNotes.value = data || [];
+  }).catch(() => {});
+
+  // 加载知识回顾
+  getFlashback().then((data: any) => {
+    flashbackItems.value = data || [];
   }).catch(() => {});
 });
 

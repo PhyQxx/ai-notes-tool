@@ -2,6 +2,8 @@ package com.ainotes;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * AI Notes Application
@@ -9,6 +11,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author AI Notes Team
  * @since 1.0.0
  */
+@EnableAsync
+@EnableScheduling
 @SpringBootApplication
 public class AiNotesApplication {
 

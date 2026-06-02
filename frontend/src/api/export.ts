@@ -15,8 +15,8 @@ export function exportMarkdown(noteId: number): Promise<Blob> {
 /**
  * 导出为PDF
  */
-export function exportPDF(noteId: number): Promise<Blob> {
-  return http.post(`/notes/${noteId}/export/pdf`, {}, {
+export function exportPDF(noteId: number, password?: string): Promise<Blob> {
+  return http.post(`/notes/${noteId}/export/pdf`, { password }, {
     responseType: 'blob'
   });
 }
@@ -24,8 +24,8 @@ export function exportPDF(noteId: number): Promise<Blob> {
 /**
  * 导出为Word
  */
-export function exportWord(noteId: number): Promise<Blob> {
-  return http.post(`/notes/${noteId}/export/word`, {}, {
+export function exportWord(noteId: number, password?: string): Promise<Blob> {
+  return http.post(`/notes/${noteId}/export/word`, { password }, {
     responseType: 'blob'
   });
 }

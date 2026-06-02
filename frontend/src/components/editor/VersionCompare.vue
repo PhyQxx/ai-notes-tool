@@ -1,24 +1,35 @@
 <template>
   <div class="version-compare">
     <div class="compare-header">
-      <el-tag type="success">新增</el-tag>
-      <el-tag type="danger">删除</el-tag>
+      <div class="stats">
+        <el-tag type="success">添加: {{ stats.added }}</el-tag>
+        <el-tag type="danger">删除: {{ stats.removed }}</el-tag>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><i class="bg-added"></i> 新增</span>
+        <span class="legend-item"><i class="bg-removed"></i> 删除</span>
+      </div>
     </div>
-    <div class="compare-content">
+    <div class="compare-content" ref="scrollContainer">
       <div
         v-for="(line, index) in diffLines"
         :key="index"
         :class="['diff-line', line.type]"
       >
-        <span class="line-number">{{ line.lineNumber }}</span>
-        <span class="line-content" v-html="line.content"></span>
+        <div class="line-numbers">
+          <span class="old-num">{{ line.oldLine || '' }}</span>
+          <span class="new-num">{{ line.newLine || '' }}</span>
+        </div>
+        <span class="line-marker">{{ line.marker }}</span>
+        <span class="line-content">{{ line.content }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { diffLines as getDiffLines } from 'diff';
 
 const props = defineProps<{
   oldContent: string;
@@ -26,139 +37,177 @@ const props = defineProps<{
 }>();
 
 interface DiffLine {
-  type: 'added' | 'removed' | 'unchanged' | 'empty';
-  lineNumber: string;
+  type: 'added' | 'removed' | 'unchanged';
+  oldLine?: number;
+  newLine?: number;
+  marker: string;
   content: string;
 }
 
-const diffLines = computed<DiffLine[]>(() => {
-  const oldLines = props.oldContent.split('\n');
-  const newLines = props.newContent.split('\n');
-  const result: DiffLine[] = [];
+const scrollContainer = ref<HTMLElement | null>(null);
 
-  // 简单的逐行对比算法
-  const maxLines = Math.max(oldLines.length, newLines.length);
+const diffLines = computed(() => {
+  const changes = getDiffLines(props.oldContent || '', props.newContent || '');
+  const lines: DiffLine[] = [];
+  
+  let oldLineCount = 1;
+  let newLineCount = 1;
 
-  for (let i = 0; i < maxLines; i++) {
-    const oldLine = oldLines[i] || '';
-    const newLine = newLines[i] || '';
-
-    if (oldLine === newLine) {
-      // 内容相同
-      result.push({
-        type: 'unchanged',
-        lineNumber: (i + 1).toString(),
-        content: escapeHtml(newLine)
-      });
-    } else if (!oldLine && newLine) {
-      // 新增行
-      result.push({
-        type: 'added',
-        lineNumber: '+',
-        content: `<el-tag size="small" type="success">新增</el-tag> ${escapeHtml(newLine)}`
-      });
-    } else if (oldLine && !newLine) {
-      // 删除行
-      result.push({
-        type: 'removed',
-        lineNumber: '-',
-        content: `<el-tag size="small" type="danger">删除</el-tag> ${escapeHtml(oldLine)}`
-      });
-    } else {
-      // 内容修改 - 删除旧行，添加新行
-      result.push({
-        type: 'removed',
-        lineNumber: '-',
-        content: `<el-tag size="small" type="danger">删除</el-tag> ${escapeHtml(oldLine)}`
-      });
-      result.push({
-        type: 'added',
-        lineNumber: '+',
-        content: `<el-tag size="small" type="success">新增</el-tag> ${escapeHtml(newLine)}`
-      });
+  changes.forEach(change => {
+    const changeLines = change.value.split('\n');
+    // If the last character is a newline, split will create an extra empty string
+    if (changeLines[changeLines.length - 1] === '') {
+      changeLines.pop();
     }
-  }
 
-  return result;
+    changeLines.forEach(lineContent => {
+      if (change.added) {
+        lines.push({
+          type: 'added',
+          newLine: newLineCount++,
+          marker: '+',
+          content: lineContent
+        });
+      } else if (change.removed) {
+        lines.push({
+          type: 'removed',
+          oldLine: oldLineCount++,
+          marker: '-',
+          content: lineContent
+        });
+      } else {
+        lines.push({
+          type: 'unchanged',
+          oldLine: oldLineCount++,
+          newLine: newLineCount++,
+          marker: ' ',
+          content: lineContent
+        });
+      }
+    });
+  });
+
+  return lines;
 });
 
-const escapeHtml = (text: string) => {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-};
+const stats = computed(() => {
+  let added = 0;
+  let removed = 0;
+  diffLines.value.forEach(line => {
+    if (line.type === 'added') added++;
+    if (line.type === 'removed') removed++;
+  });
+  return { added, removed };
+});
 </script>
 
 <style scoped lang="scss">
 .version-compare {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  overflow: hidden;
+
   .compare-header {
     display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--el-border-color);
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: var(--el-fill-color-extra-light);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    .stats {
+      display: flex;
+      gap: 8px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        i {
+          width: 12px;
+          height: 12px;
+          border-radius: 2px;
+          
+          &.bg-added { background-color: var(--el-color-success-light-8); }
+          &.bg-removed { background-color: var(--el-color-danger-light-8); }
+        }
+      }
+    }
   }
 
   .compare-content {
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1.8;
-    background-color: var(--el-bg-color-page);
-    border-radius: 8px;
-    padding: 16px;
-    max-height: 500px;
+    flex: 1;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 20px;
+    background-color: var(--el-bg-color);
     overflow-y: auto;
+    padding: 8px 0;
 
     .diff-line {
       display: flex;
-      padding: 4px 8px;
-      border-radius: 4px;
+      padding: 0 16px;
+      white-space: pre-wrap;
+      word-break: break-all;
 
       &:hover {
         background-color: var(--el-fill-color-light);
       }
 
-      .line-number {
+      .line-numbers {
+        display: flex;
         flex-shrink: 0;
-        width: 40px;
-        text-align: right;
-        color: var(--el-text-color-secondary);
+        width: 80px;
         margin-right: 12px;
+        color: var(--el-text-color-placeholder);
         user-select: none;
+        text-align: right;
+
+        .old-num, .new-num {
+          width: 40px;
+          padding-right: 8px;
+        }
+      }
+
+      .line-marker {
+        flex-shrink: 0;
+        width: 20px;
+        user-select: none;
+        color: var(--el-text-color-secondary);
       }
 
       .line-content {
         flex: 1;
-        min-width: 0;
-        white-space: pre-wrap;
-        word-break: break-word;
       }
 
       &.added {
         background-color: var(--el-color-success-light-9);
-
-        .line-number {
-          color: var(--el-color-success);
-        }
+        .line-content, .line-marker { color: var(--el-color-success-dark-2); }
+        .new-num { color: var(--el-color-success); }
       }
 
       &.removed {
         background-color: var(--el-color-danger-light-9);
-
-        .line-number {
-          color: var(--el-color-danger);
-        }
+        .line-content, .line-marker { color: var(--el-color-danger-dark-2); }
+        .old-num { color: var(--el-color-danger); }
       }
 
       &.unchanged {
         color: var(--el-text-color-regular);
       }
-
-      &.empty {
-        height: 4px;
-        padding: 0;
-      }
     }
   }
 }
 </style>
+

@@ -16,117 +16,193 @@
     </template>
 
     <div class="assistant-content">
-      <!-- 对话列表侧边栏 -->
-      <div class="conversation-sidebar">
-        <el-button type="primary" size="small" style="width:100%" @click="handleNewConversation">
-          + 新对话
-        </el-button>
-        <div class="conversation-list">
-          <div
-            v-for="conv in aiStore.conversations"
-            :key="conv.id"
-            :class="['conversation-item', { active: aiStore.currentConversation?.id === conv.id }]"
-            @click="handleSelectConversation(conv)"
-            @contextmenu.prevent="showContextMenu($event, conv)"
-          >
-            <span class="conv-title">{{ conv.title || '新对话' }}</span>
-            <el-icon class="conv-delete" @click.stop="handleDeleteConversation(conv.id)"><Delete /></el-icon>
-          </div>
-        </div>
-      </div>
-
-      <!-- 主内容区 -->
-      <div class="main-area">
-        <!-- 提供商和模型选择 -->
-        <div class="provider-section">
-          <AIProviderSelect
-            v-model:provider="aiStore.config.provider"
-            v-model:model="aiStore.config.model"
-          />
-          <!-- 上下文信息 + 清除按钮 -->
-          <div v-if="aiStore.contextInfo && aiStore.currentConversation" class="context-info-bar">
-            <span class="context-stat">
-              📊 {{ aiStore.contextInfo.usedRounds }}/{{ aiStore.contextInfo.maxRounds }} 轮对话
-              · {{ aiStore.contextInfo.totalTokens.toLocaleString() }} tokens
-            </span>
-            <el-popconfirm title="确定清除上下文？AI将不再记住之前的对话内容" @confirm="handleClearContext">
-              <template #reference>
-                <el-button size="small" type="warning" plain :disabled="aiStore.isStreaming">🗑 清除上下文</el-button>
-              </template>
-            </el-popconfirm>
-          </div>
-        </div>
-
-        <!-- 快捷操作按钮 -->
-        <div class="quick-actions">
-          <el-button
-            v-for="action in quickActions"
-            :key="action.type"
-            size="small"
-            :loading="action.loading"
-            @click="handleQuickAction(action.type)"
-          >
-            {{ action.label }}
-          </el-button>
-        </div>
-
-        <!-- 对话区域 -->
-        <div class="chat-area">
-          <div ref="chatContainer" class="chat-messages">
-            <el-empty v-if="displayMessages.length === 0 && !aiStore.isStreaming" description="开始新对话" :image-size="60" />
-            <div
-              v-for="(msg, index) in displayMessages"
-              :key="index"
-              :class="['message', msg.role]"
-            >
-              <div class="message-content">
-                <div class="message-role">{{ msg.role === 'user' ? '我' : 'AI助手' }}</div>
-                <div class="message-text">{{ msg.content }}</div>
+      <el-tabs v-model="activeTab" class="assistant-tabs" style="width: 100%">
+        <!-- AI 对话页签 -->
+        <el-tab-pane label="AI 对话" name="chat">
+          <div class="chat-tab-content">
+            <!-- 对话列表侧边栏 -->
+            <div class="conversation-sidebar">
+              <el-button type="primary" size="small" style="width:100%" @click="handleNewConversation">
+                + 新对话
+              </el-button>
+              <div class="conversation-list">
+                <div
+                  v-for="conv in aiStore.conversations"
+                  :key="conv.id"
+                  :class="['conversation-item', { active: aiStore.currentConversation?.id === conv.id }]"
+                  @click="handleSelectConversation(conv)"
+                  @contextmenu.prevent="showContextMenu($event, conv)"
+                >
+                  <span class="conv-title">{{ conv.title || '新对话' }}</span>
+                  <el-icon class="conv-delete" @click.stop="handleDeleteConversation(conv.id)"><Delete /></el-icon>
+                </div>
               </div>
             </div>
 
-            <!-- 流式输出 -->
-            <div v-if="aiStore.isStreaming" class="message assistant streaming">
-              <div class="message-content">
-                <div class="message-role">AI助手</div>
-                <div class="message-text">
-                  {{ aiStore.streamMessage || '思考中...' }}
-                  <span class="cursor">|</span>
+            <!-- 主内容区 -->
+            <div class="main-area">
+              <!-- 提供商和模型选择 -->
+              <div class="provider-section">
+                <AIProviderSelect
+                  v-model:provider="aiStore.config.provider"
+                  v-model:model="aiStore.config.model"
+                />
+                <!-- 上下文信息 + 清除按钮 -->
+                <div v-if="aiStore.contextInfo && aiStore.currentConversation" class="context-info-bar">
+                  <span class="context-stat">
+                    📊 {{ aiStore.contextInfo.usedRounds }}/{{ aiStore.contextInfo.maxRounds }} 轮对话
+                    · {{ aiStore.contextInfo.totalTokens.toLocaleString() }} tokens
+                  </span>
+                  <el-popconfirm title="确定清除上下文？AI将不再记住之前的对话内容" @confirm="handleClearContext">
+                    <template #reference>
+                      <el-button size="small" type="warning" plain :disabled="aiStore.isStreaming">🗑 清除上下文</el-button>
+                    </template>
+                  </el-popconfirm>
+                </div>
+              </div>
+
+              <!-- 快捷操作按钮 -->
+              <div class="quick-actions">
+                <el-button
+                  v-for="action in quickActions"
+                  :key="action.type"
+                  size="small"
+                  :loading="action.loading"
+                  @click="handleQuickAction(action.type)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+
+              <!-- 对话区域 -->
+              <div class="chat-area">
+                <div ref="chatContainer" class="chat-messages">
+                  <el-empty v-if="displayMessages.length === 0 && !aiStore.isStreaming" description="开始新对话" :image-size="60" />
+                  <div
+                    v-for="(msg, index) in displayMessages"
+                    :key="index"
+                    :class="['message', msg.role]"
+                  >
+                    <div class="message-content">
+                      <div class="message-role">{{ msg.role === 'user' ? '我' : 'AI助手' }}</div>
+                      <div class="message-text">{{ msg.content }}</div>
+                    </div>
+                  </div>
+
+                  <!-- 流式输出 -->
+                  <div v-if="aiStore.isStreaming" class="message assistant streaming">
+                    <div class="message-content">
+                      <div class="message-role">AI助手</div>
+                      <div class="message-text">
+                        {{ aiStore.streamMessage || '思考中...' }}
+                        <span class="cursor">|</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 输入区域 -->
+              <div class="input-area">
+                <el-input
+                  v-model="inputMessage"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="输入问题，按 Enter 发送，Shift + Enter 换行"
+                  @keydown="handleKeyDown"
+                />
+                <div class="input-actions">
+                  <el-button
+                    v-if="aiStore.isStreaming"
+                    type="danger"
+                    @click="handleStopGeneration"
+                  >
+                    ⏹ 停止生成
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    :loading="aiStore.isStreaming"
+                    @click="handleSend"
+                    :disabled="!inputMessage.trim()"
+                  >
+                    <el-icon v-if="!aiStore.isStreaming"><Promotion /></el-icon>
+                    {{ aiStore.isStreaming ? '生成中...' : '发送' }}
+                  </el-button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </el-tab-pane>
 
-        <!-- 输入区域 -->
-        <div class="input-area">
-          <el-input
-            v-model="inputMessage"
-            type="textarea"
-            :rows="3"
-            placeholder="输入问题，按 Enter 发送，Shift + Enter 换行"
-            @keydown="handleKeyDown"
-          />
-          <div class="input-actions">
-            <el-button
-              v-if="aiStore.isStreaming"
-              type="danger"
-              @click="handleStopGeneration"
-            >
-              ⏹ 停止生成
-            </el-button>
-            <el-button
-              type="primary"
-              :loading="aiStore.isStreaming"
-              @click="handleSend"
-              :disabled="!inputMessage.trim()"
-            >
-              <el-icon v-if="!aiStore.isStreaming"><Promotion /></el-icon>
-              {{ aiStore.isStreaming ? '生成中...' : '发送' }}
-            </el-button>
+        <!-- AI 建议页签 -->
+        <el-tab-pane label="智能建议" name="suggestion">
+          <!-- ... (existing suggestion content) ... -->
+        </el-tab-pane>
+
+        <!-- 知识审计页签 -->
+        <el-tab-pane label="知识审计" name="audit">
+          <div class="audit-tab-content">
+            <div class="audit-header">
+              <h4>知识冲突与重复检测</h4>
+              <p class="audit-hint">AI 将扫描您的笔记，发现潜在的逻辑矛盾或过度重复的内容。</p>
+              <el-button type="primary" @click="handleRunAudit" :loading="loadingAudit">
+                <el-icon><Search /></el-icon> 开始全局审计
+              </el-button>
+            </div>
+
+            <div v-loading="loadingAudit" class="audit-results">
+              <el-empty v-if="auditResults.length === 0 && !loadingAudit" description="暂无审计发现" />
+              <div
+                v-for="(res, index) in auditResults"
+                :key="index"
+                class="audit-item"
+              >
+                <div class="audit-pair">
+                  <span class="note-link" @click="handleOpenNote(res.noteA.id)">{{ res.noteA.title }}</span>
+                  <el-icon><Switch /></el-icon>
+                  <span class="note-link" @click="handleOpenNote(res.noteB.id)">{{ res.noteB.title }}</span>
+                </div>
+                <div class="audit-analysis">
+                  <div class="analysis-label">AI 分析建议：</div>
+                  <p>{{ res.analysis }}</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </el-tab-pane>
+
+        <!-- 知识审计页签 -->
+        <el-tab-pane label="知识审计" name="audit">
+          <div class="audit-tab-content">
+            <div class="audit-header">
+              <h4>知识冲突与重复检测</h4>
+              <p class="audit-hint">AI 将扫描您的笔记，发现潜在的逻辑矛盾或过度重复的内容。</p>
+              <el-button type="primary" @click="handleRunAudit" :loading="loadingAudit">
+                <el-icon><Search /></el-icon> 开始全局审计
+              </el-button>
+            </div>
+
+            <div v-loading="loadingAudit" class="audit-results">
+              <el-empty v-if="auditResults.length === 0 && !loadingAudit" description="暂无审计发现" />
+              <div
+                v-for="(res, index) in auditResults"
+                :key="index"
+                class="audit-item"
+              >
+                <div class="audit-pair">
+                  <span class="note-link" @click="handleOpenNote(res.noteA.id)">{{ res.noteA.title }}</span>
+                  <el-icon><Switch /></el-icon>
+                  <span class="note-link" @click="handleOpenNote(res.noteB.id)">{{ res.noteB.title }}</span>
+                </div>
+                <div class="audit-analysis">
+                  <div class="analysis-label">AI 分析建议：</div>
+                  <p>{{ res.analysis }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
 
     <!-- 右键菜单 -->
@@ -143,12 +219,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Close, Promotion, Delete } from '@element-plus/icons-vue';
+import { Close, Promotion, Delete, ArrowRight } from '@element-plus/icons-vue';
 import { useAIStore } from '@/stores/ai';
 import { useNoteStore } from '@/stores/note';
 import AIProviderSelect from './AIProviderSelect.vue';
 import type { AIConversation, AIChatMessage } from '@/types';
+import { suggestRelations } from '@/api/ai';
 
 const props = defineProps<{
   visible: boolean;
@@ -162,6 +240,7 @@ const emit = defineEmits<{
 
 const aiStore = useAIStore();
 const noteStore = useNoteStore();
+const router = useRouter();
 
 const visible = computed({
   get: () => props.visible,
@@ -184,6 +263,25 @@ const quickActions = ref([
   { type: 'expand', label: '📖 续写', loading: false },
   { type: 'rewrite', label: '🔄 改写', loading: false }
 ]);
+
+const activeTab = ref('chat');
+const suggestedNotes = ref<any[]>([]);
+const loadingSuggestions = ref(false);
+
+const auditResults = ref<any[]>([]);
+const loadingAudit = ref(false);
+
+const handleRunAudit = async () => {
+  loadingAudit.value = true;
+  try {
+    const res = await import('@/api/ai').then(m => m.detectConflicts());
+    auditResults.value = res || [];
+  } catch (error) {
+    ElMessage.error('审计失败');
+  } finally {
+    loadingAudit.value = false;
+  }
+};
 
 const displayMessages = computed(() => {
   return aiStore.currentConversation?.messages || [];
@@ -327,6 +425,23 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
 };
 
+const fetchSuggestions = async () => {
+  if (!props.noteId) return;
+  loadingSuggestions.value = true;
+  try {
+    const res = await suggestRelations(props.noteId);
+    suggestedNotes.value = res;
+  } catch (error) {
+    console.error('获取建议失败:', error);
+  } finally {
+    loadingSuggestions.value = false;
+  }
+};
+
+const handleOpenNote = (id: number) => {
+  router.push(`/notes/${id}`);
+};
+
 const handleClose = () => { visible.value = false; };
 
 const scrollToBottom = () => {
@@ -342,9 +457,18 @@ watch(() => aiStore.streamMessage, () => {
 watch(visible, async (val) => {
   if (val) {
     await aiStore.fetchConversations();
+    if (activeTab.value === 'suggestion') {
+      fetchSuggestions();
+    }
   }
   if (!val) {
     contextMenuVisible.value = false;
+  }
+});
+
+watch(activeTab, (val) => {
+  if (val === 'suggestion') {
+    fetchSuggestions();
   }
 });
 
@@ -367,6 +491,138 @@ if (typeof document !== 'undefined') {
   display: flex;
   height: calc(100vh - 80px);
   gap: 12px;
+}
+
+.assistant-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  :deep(.el-tabs__content) {
+    flex: 1;
+    overflow: hidden;
+  }
+  :deep(.el-tab-pane) {
+    height: 100%;
+  }
+}
+
+.chat-tab-content {
+  display: flex;
+  height: 100%;
+  gap: 12px;
+}
+
+.audit-tab-content {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  .audit-header {
+    margin-bottom: 24px;
+    h4 { margin: 0 0 8px 0; font-size: 16px; }
+    .audit-hint { font-size: 13px; color: var(--el-text-color-secondary); margin-bottom: 16px; }
+  }
+
+  .audit-results {
+    flex: 1;
+    overflow-y: auto;
+
+    .audit-item {
+      background: var(--el-fill-color-blank);
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+
+      &:hover {
+        border-color: var(--el-color-warning);
+        box-shadow: var(--el-box-shadow-light);
+      }
+
+      .audit-pair {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        color: var(--el-text-color-secondary);
+
+        .note-link {
+          font-weight: 600;
+          color: var(--brand-primary);
+          cursor: pointer;
+          &:hover { text-decoration: underline; }
+        }
+      }
+
+      .audit-analysis {
+        background: var(--el-fill-color-light);
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 13px;
+
+        .analysis-label {
+          font-weight: 600;
+          color: var(--el-text-color-primary);
+          margin-bottom: 4px;
+        }
+
+        p { margin: 0; line-height: 1.6; color: var(--el-text-color-regular); }
+      }
+    }
+  }
+}
+
+.suggestion-tab-content {
+  padding: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  .suggestion-header {
+    margin-bottom: 20px;
+    h4 { margin: 0 0 4px 0; font-size: 16px; }
+    .suggestion-hint { font-size: 13px; color: var(--el-text-color-secondary); margin: 0; }
+  }
+
+  .suggestion-list {
+    flex: 1;
+    overflow-y: auto;
+
+    .suggested-note-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        border-color: var(--el-color-primary);
+        background-color: var(--el-color-primary-light-9);
+        transform: translateX(4px);
+      }
+
+      .note-info {
+        flex: 1;
+        .note-title { font-weight: 500; display: block; margin-bottom: 6px; }
+        .note-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+      }
+
+      .el-icon { color: var(--el-text-color-placeholder); }
+    }
+  }
+
+  .suggestion-actions {
+    display: flex;
+    justify-content: center;
+    padding-top: 12px;
+  }
 }
 
 .conversation-sidebar {

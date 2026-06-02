@@ -1,13 +1,28 @@
 <template>
-  <div ref="editorRef" class="markdown-editor"></div>
+  <div class="markdown-editor-wrapper">
+    <div ref="editorRef" class="markdown-editor"></div>
+    
+    <!-- 保存状态指示器 -->
+    <div class="save-status" :class="{ offline: isOffline }">
+      <el-icon v-if="isSaving" class="is-loading"><Loading /></el-icon>
+      <el-icon v-else-if="isOffline"><Cloudy /></el-icon>
+      <el-icon v-else><CircleCheck /></el-icon>
+      <span>{{ statusText }}</span>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import { ElMessage } from 'element-plus';
+import { Loading, CircleCheck, Cloudy } from '@element-plus/icons-vue';
 import { useThemeStore } from '@/stores/theme';
+import * as Y from 'yjs';
+import { YjsProvider } from '@/utils/yjs-provider';
+import { aiSummarize, extractTasks, ocr } from '@/api/ai';
+import { searchTitles } from '@/api/noteLink';
 
 const props = defineProps<{
   modelValue: string;
@@ -24,24 +39,19 @@ const editorRef = ref<HTMLElement>();
 let vditor: Vditor | null = null;
 const themeStore = useThemeStore();
 
-const uploadImage = async (file: File): Promise<string> => {
-  const token = localStorage.getItem('token');
-  const formData = new FormData();
-  formData.append('file', file);
+const isSaving = ref(false);
+const isOffline = ref(!navigator.onLine);
 
-  const response = await fetch('/api/files/upload/image', {
-    method: 'POST',
-    headers: { 'Authorization': token ? `Bearer ${token}` : '' },
-    body: formData
-  });
+const statusText = computed(() => {
+  if (isOffline.value) return '已保存至本地';
+  if (isSaving.value) return '正在同步...';
+  return '已同步云端';
+});
 
-  if (!response.ok) throw new Error('上传失败');
-  const result = await response.json();
-  if (result.code === 200 && result.data?.url) {
-    return result.data.url;
-  }
-  throw new Error('上传失败');
-};
+const ydoc = new Y.Doc();
+const ytext = ydoc.getText('markdown');
+let provider: YjsProvider | null = null;
+let isRemoteChange = false;
 
 const initEditor = () => {
   vditor = new Vditor(editorRef.value!, {
@@ -52,25 +62,42 @@ const initEditor = () => {
     cdn: '/vditor',
     upload: {
       accept: 'image/*',
-      url: '/api/files/upload/image',
-      headers: (() => {
-        const token = localStorage.getItem('token');
-        return token ? { Authorization: `Bearer ${token}` } : {};
-      })(),
-      success: (editor: Vditor, msg: string) => {
+      handler: async (files: File[]) => {
+        const file = files[0];
+        if (!file) return;
+        
         try {
-          const result = JSON.parse(msg);
+          const compressedFile = await compressImage(file);
+          const formData = new FormData();
+          formData.append('file', compressedFile);
+          
+          const loading = ElMessage({
+            message: '图片上传中...',
+            type: 'info',
+            duration: 0
+          });
+          
+          const token = localStorage.getItem('token');
+          const response = await fetch('/api/upload/image', {
+            method: 'POST',
+            headers: { 'Authorization': token ? `Bearer ${token}` : '' },
+            body: formData
+          });
+          
+          const result = await response.json();
+          loading.close();
+          
           if (result.code === 200 && result.data?.url) {
-            // Vditor handles insertion automatically on success
+            const url = result.data.url;
+            const name = file.name;
+            vditor?.insertValue(`![${name}](${url})`);
           } else {
             ElMessage.error(result.message || '上传失败');
           }
-        } catch {
-          ElMessage.error('上传失败');
+        } catch (error) {
+          console.error('图片上传失败:', error);
+          ElMessage.error('图片上传失败');
         }
-      },
-      error: () => {
-        ElMessage.error('图片上传失败');
       }
     },
     theme: themeStore.getEffectiveTheme() === 'dark' ? 'dark' : 'classic',
@@ -85,7 +112,60 @@ const initEditor = () => {
     toolbarConfig: {
       pin: true
     },
-    placeholder: '开始编写您的笔记...',
+    hint: {
+      extend: [
+        {
+          key: '/',
+          hint: (value: string) => {
+            const commands = [
+              { value: '# ', html: '一级标题 (H1)' },
+              { value: '## ', html: '二级标题 (H2)' },
+              { value: '### ', html: '三级标题 (H3)' },
+              { value: '* ', html: '无序列表' },
+              { value: '1. ', html: '有序列表' },
+              { value: '> ', html: '引用' },
+              { value: '```\n\n```', html: '代码块' },
+              { value: '[]()', html: '链接' },
+              { value: '[toc]\n', html: '插入目录 (TOC)' },
+              { value: 'ai-summarize', html: '✨ AI 总结' },
+              { value: 'ai-tasks', html: '✅ AI 提取待办' },
+              { value: 'ai-ocr', html: '🖼️ AI OCR 识图' }
+            ];
+            return commands.filter(c => c.html.toLowerCase().includes(value.toLowerCase()));
+          }
+        },
+        {
+          key: '[[',
+          hint: async (value: string) => {
+            try {
+              const notes = await searchTitles(value);
+              return notes.map(n => ({
+                value: `[[${n.title}]] `,
+                html: `📄 ${n.title}`
+              }));
+            } catch (e) {
+              return [];
+            }
+          }
+        }
+      ],
+      select: (value: string) => {
+        if (value === 'ai-summarize') {
+          handleAISummarize();
+          return '';
+        }
+        if (value === 'ai-tasks') {
+          handleAIExtractTasks();
+          return '';
+        }
+        if (value === 'ai-ocr') {
+          handleAIOCR();
+          return '';
+        }
+        return value;
+      }
+    },
+    placeholder: '输入 / 唤起快捷菜单...',
     preview: {
       markdown: {
         mathBlockMarker: '$$',
@@ -109,6 +189,15 @@ const initEditor = () => {
       }
     },
     input: (value) => {
+      if (!isRemoteChange) {
+        const currentText = ytext.toString();
+        if (value !== currentText) {
+          ydoc.transact(() => {
+            ytext.delete(0, ytext.length);
+            ytext.insert(0, value);
+          });
+        }
+      }
       emit('update:modelValue', value);
     },
     ctrlEnter: () => {
@@ -132,9 +221,165 @@ const initEditor = () => {
   });
 };
 
+const handleAISummarize = async () => {
+  if (!vditor) return;
+  const content = vditor.getValue();
+  if (!content) {
+    ElMessage.warning('笔记内容为空，无法总结');
+    return;
+  }
+
+  try {
+    const loading = ElMessage({
+      message: 'AI 总结生成中...',
+      type: 'info',
+      duration: 0
+    });
+    
+    const res = await aiSummarize(props.noteId, content);
+    loading.close();
+    
+    // Insert at the end
+    vditor.insertValue(`\n\n> **AI 总结：**\n> ${res.data}\n\n`);
+    ElMessage.success('总结生成成功');
+  } catch (error) {
+    ElMessage.error('AI 总结失败');
+  }
+};
+
+const handleAIExtractTasks = async () => {
+  if (!vditor) return;
+  const content = vditor.getValue();
+  if (!content) {
+    ElMessage.warning('笔记内容为空，无法提取待办');
+    return;
+  }
+
+  try {
+    const loading = ElMessage({
+      message: 'AI 待办提取中...',
+      type: 'info',
+      duration: 0
+    });
+    
+    const tasks = await extractTasks(content);
+    loading.close();
+    
+    if (tasks && tasks.length > 0) {
+      const taskStr = tasks.map(t => `- [ ] ${t}`).join('\n');
+      vditor.insertValue(`\n\n### ✅ AI 提取的待办事项\n${taskStr}\n\n`);
+      ElMessage.success('待办提取成功');
+    } else {
+      ElMessage.info('未发现明显的待办事项');
+    }
+  } catch (error) {
+    ElMessage.error('待办提取失败');
+  }
+};
+
+const handleAIOCR = async () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const loading = ElMessage({
+      message: 'AI OCR 识图中...',
+      type: 'info',
+      duration: 0
+    });
+    
+    try {
+      const res = await ocr(file);
+      loading.close();
+      if (res.data) {
+        vditor?.insertValue(`\n\n### 🖼️ OCR 识图结果\n${res.data}\n\n`);
+        ElMessage.success('识图成功');
+      }
+    } catch (error) {
+      loading.close();
+      ElMessage.error('识图失败');
+    }
+  };
+  input.click();
+};
+
+const compressImage = (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const maxWidth = 1200;
+        const maxHeight = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          } else {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', 0.8);
+      };
+    };
+  });
+};
+
 onMounted(() => {
   initEditor();
+
+  if (props.noteId) {
+    provider = new YjsProvider(props.noteId, ydoc);
+  }
+
+  ytext.observe(event => {
+    if (vditor && !event.transaction.local) {
+      isRemoteChange = true;
+      const newValue = ytext.toString();
+      if (vditor.getValue() !== newValue) {
+        vditor.setValue(newValue);
+      }
+      isRemoteChange = false;
+    }
+  });
+
+  window.addEventListener('ai:insert-content', handleAIInsert);
 });
+
+onBeforeUnmount(() => {
+  window.removeEventListener('ai:insert-content', handleAIInsert);
+  vditor?.destroy();
+});
+
+const handleAIInsert = (e: any) => {
+  const content = e.detail?.content;
+  if (content && vditor) {
+    vditor.insertValue('\n' + content + '\n');
+    ElMessage.success('内容已插入编辑器');
+  }
+};
 
 onBeforeUnmount(() => {
   if (vditor) {
@@ -157,8 +402,43 @@ watch(() => themeStore.mode, () => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+.markdown-editor-wrapper {
+  position: relative;
+  height: 100%;
+}
+
 .markdown-editor {
   width: 100%;
+}
+
+.save-status {
+  position: absolute;
+  bottom: 16px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  box-shadow: var(--el-box-shadow-light);
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.8;
+  transition: all 0.3s;
+
+  .el-icon {
+    font-size: 14px;
+    color: var(--el-color-success);
+  }
+
+  &.offline {
+    color: var(--el-color-warning);
+    .el-icon { color: var(--el-color-warning); }
+  }
 }
 </style>

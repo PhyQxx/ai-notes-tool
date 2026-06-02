@@ -182,6 +182,25 @@
               </div>
             </el-form-item>
 
+            <el-divider border-style="dashed">使用统计</el-divider>
+            
+            <div class="usage-stats-container">
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <div class="stat-card">
+                    <div class="stat-label">累计对话轮数</div>
+                    <div class="stat-value">128</div>
+                  </div>
+                </el-col>
+                <el-col :span="12">
+                  <div class="stat-card">
+                    <div class="stat-label">估算 Token 消耗</div>
+                    <div class="stat-value">4.2w</div>
+                  </div>
+                </el-col>
+              </el-row>
+            </div>
+
             <el-form-item>
               <el-button type="primary" :loading="saving" @click="handleSaveAIConfig">
                 保存配置
@@ -196,19 +215,63 @@
             </el-form-item>
           </el-form>
         </el-tab-pane>
+
+        <el-tab-pane name="apikey">
+          <template #label><el-icon><Key /></el-icon> 公开 API</template>
+          <div class="api-key-settings">
+            <div class="section-header">
+              <h4>我的 API Key</h4>
+              <el-button type="primary" size="small" :loading="generating" @click="handleGenerateApiKey">
+                生成新 Key
+              </el-button>
+            </div>
+            
+            <p class="section-desc">使用 API Key 允许第三方应用访问您的笔记。请妥善保管，不要泄露。</p>
+
+            <el-table :data="apiKeys" v-loading="keyLoading" style="width: 100%; margin-top: 16px">
+              <el-table-column prop="name" label="名称" width="180" />
+              <el-table-column label="API Key" min-width="240">
+                <template #default="{ row }">
+                  <div class="api-key-display">
+                    <code>{{ row.apiKey }}</code>
+                    <el-button link type="primary" :icon="CopyDocument" @click="copyToClipboard(row.apiKey)" />
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="创建时间" width="180" />
+              <el-table-column label="操作" width="100">
+                <template #default="{ row }">
+                  <el-popconfirm title="确定吊销此 Key 吗？" @confirm="handleRevokeApiKey(row.id)">
+                    <template #reference>
+                      <el-button link type="danger" :icon="Delete">吊销</el-button>
+                    </template>
+                  </el-popconfirm>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="api-docs-link">
+              <el-divider />
+              <h5>快速开始</h5>
+              <p>在 HTTP 请求头中添加 <code>X-API-KEY: your_api_key</code> 即可调用接口。</p>
+              <p>示例: <code>GET /api/notes</code></p>
+            </div>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
-import { User, Lock, Brush, Monitor, CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue';
+import { User, Lock, Brush, Monitor, CircleCheckFilled, CircleCloseFilled, Key, CopyDocument, Delete } from '@element-plus/icons-vue';
 import { useAuthStore } from '@/stores/auth';
 import { useAIStore } from '@/stores/ai';
 import { updateProfile } from '@/api/auth';
+import { http } from '@/utils/request';
 
 const authStore = useAuthStore();
 const aiStore = useAIStore();
@@ -220,6 +283,59 @@ const changing = ref(false);
 const testing = ref(false);
 const aiConnected = ref(false);
 const tested = ref(false);
+
+// API Key management
+const apiKeys = ref<any[]>([]);
+const keyLoading = ref(false);
+const generating = ref(false);
+
+const loadApiKeys = async () => {
+  keyLoading.value = true;
+  try {
+    const res = await http.get('/settings/api-keys');
+    apiKeys.value = res as any;
+  } catch (error) {
+    console.error('加载 API Key 失败:', error);
+  } finally {
+    keyLoading.value = false;
+  }
+};
+
+const handleGenerateApiKey = async () => {
+  generating.value = true;
+  try {
+    const name = `My Key ${apiKeys.value.length + 1}`;
+    await http.post('/settings/api-keys', { name });
+    ElMessage.success('API Key 已生成');
+    loadApiKeys();
+  } catch (error) {
+    ElMessage.error('生成失败');
+  } finally {
+    generating.value = false;
+  }
+};
+
+const handleRevokeApiKey = async (id: number) => {
+  try {
+    await http.delete(`/settings/api-keys/${id}`);
+    ElMessage.success('API Key 已吊销');
+    loadApiKeys();
+  } catch (error) {
+    ElMessage.error('操作失败');
+  }
+};
+
+const copyToClipboard = (text: string) => {
+  navigator.clipboard.writeText(text).then(() => {
+    ElMessage.success('已复制到剪贴板');
+  });
+};
+
+watch(activeTab, (val) => {
+  if (val === 'apikey') {
+    loadApiKeys();
+  }
+});
 
 const aiConfig = reactive({
   provider: 'deepseek',
@@ -471,6 +587,61 @@ onMounted(async () => {
     &.missing {
       color: var(--el-color-warning);
       background-color: rgba(230, 162, 60, 0.1);
+    }
+  }
+
+  .usage-stats-container {
+    margin-bottom: 24px;
+    
+    .stat-card {
+      background: var(--el-fill-color-light);
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      
+      .stat-label {
+        font-size: 13px;
+        color: var(--el-text-color-secondary);
+        margin-bottom: 8px;
+      }
+      
+      .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--brand-primary);
+      }
+    }
+  }
+
+  .api-key-settings {
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      h4 { margin: 0; font-size: 16px; }
+    }
+    .section-desc {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      margin-bottom: 24px;
+    }
+    .api-key-display {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      code {
+        background-color: var(--el-fill-color-light);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+    }
+    .api-docs-link {
+      margin-top: 32px;
+      h5 { margin: 0 0 12px 0; font-size: 14px; }
+      p { margin: 4px 0; font-size: 13px; color: var(--el-text-color-regular); }
+      code { color: var(--el-color-primary); }
     }
   }
 }

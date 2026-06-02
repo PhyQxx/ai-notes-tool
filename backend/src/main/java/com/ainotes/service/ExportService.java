@@ -22,19 +22,21 @@ public interface ExportService {
     /**
      * 导出PDF文件
      *
-     * @param userId  用户ID
-     * @param noteId  笔记ID
+     * @param userId   用户ID
+     * @param noteId   笔记ID
+     * @param password 访问密码（可选）
      * @return 文件响应
      */
-    ResponseEntity<byte[]> exportPDF(Long userId, Long noteId);
+    ResponseEntity<byte[]> exportPDF(Long userId, Long noteId, String password);
 
     /**
      * 导出Word文件
      *
-     * @param userId  用户ID
-     * @param noteId  笔记ID
+     * @param userId   用户ID
+     * @param noteId   笔记ID
+     * @param password 访问密码（可选）
      * @return 文件响应
      */
-    ResponseEntity<byte[]> exportWord(Long userId, Long noteId);
+    ResponseEntity<byte[]> exportWord(Long userId, Long noteId, String password);
 
 }

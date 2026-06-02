@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @Data
-@TableName("t_note")
+@TableName(value = "t_note", autoResultMap = true)
 public class Note implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -89,6 +89,12 @@ public class Note implements Serializable {
      * 移入回收站时间
      */
     private LocalDateTime deletedAt;
+
+    /**
+     * 自定义属性 (JSON)
+     */
+    @TableField(typeHandler = com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler.class)
+    private java.util.Map<String, Object> customAttributes;
 
     /**
      * 创建时间

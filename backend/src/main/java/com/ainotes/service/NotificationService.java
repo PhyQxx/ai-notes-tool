@@ -27,6 +27,11 @@ public interface NotificationService {
     void markAsRead(Long id, Long userId);
 
     /**
+     * 发送通知
+     */
+    void sendNotification(Long userId, String title, String content, String type, String link);
+
+    /**
      * 全部标记已读
      */
     void markAllRead(Long userId);

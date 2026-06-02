@@ -1,9 +1,0 @@
-FROM amazoncorretto:17-alpine
-WORKDIR /build
-# Copy source
-COPY pom.xml .
-COPY src ./src
-# Build
-RUN apk add --no-cache maven && mvn clean package -DskipTests -q
-# Output
-CMD ["ls", "target/"]

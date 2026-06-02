@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.ainotes.dto.response.VersionCompareResponse;
 import com.ainotes.entity.NoteVersion;
 
+import org.springframework.scheduling.annotation.Async;
+
 /**
  * 笔记版本服务接口
  *
@@ -27,6 +29,7 @@ public interface NoteVersionService {
      *
      * @param noteId 笔记ID
      */
+    @Async
     void autoSaveVersion(Long noteId);
 
     /**
