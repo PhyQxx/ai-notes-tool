@@ -227,6 +227,7 @@ import { useNoteStore } from '@/stores/note';
 import AIProviderSelect from './AIProviderSelect.vue';
 import type { AIConversation, AIChatMessage } from '@/types';
 import { suggestRelations } from '@/api/ai';
+import { getToken } from '@/utils/storage';
 
 const props = defineProps<{
   visible: boolean;
@@ -327,7 +328,7 @@ const handleRenameConversation = async () => {
     });
     if (value) {
       // Call API to rename
-      const token = localStorage.getItem('token');
+      const token = getToken();
       await fetch(`/api/ai/conversations/${contextMenuTarget.value.id}/rename`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

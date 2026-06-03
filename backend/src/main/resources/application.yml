@@ -58,12 +58,14 @@ knife4j:
   setting:
     language: zh_cn
 
-# MinIO Configuration
-minio:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket-name: ai-notes
+# FTP Configuration
+ftp:
+  host: ${FTP_HOST:127.0.0.1}
+  port: ${FTP_PORT:21}
+  username: ${FTP_USERNAME:anonymous}
+  password: ${FTP_PASSWORD:}
+  base-path: ${FTP_PATH:/}
+  url-prefix: ${FTP_URL_PREFIX:http://127.0.0.1}
 
 # JWT Configuration
 jwt:

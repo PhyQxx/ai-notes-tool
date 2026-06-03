@@ -21,12 +21,14 @@ spring:
           max-idle: 8
           min-idle: 0
 
-# MinIO Development Configuration
-minio:
-  endpoint: http://127.0.0.1:9010
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket-name: ai-notes-dev
+# FTP Development Configuration
+ftp:
+  host: ${FTP_HOST:127.0.0.1}
+  port: ${FTP_PORT:21}
+  username: ${FTP_USERNAME:anonymous}
+  password: ${FTP_PASSWORD:}
+  base-path: ${FTP_PATH:/}
+  url-prefix: ${FTP_URL_PREFIX:http://127.0.0.1}
 
 # JWT Development Configuration
 jwt:

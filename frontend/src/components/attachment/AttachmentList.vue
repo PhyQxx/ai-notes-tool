@@ -40,6 +40,7 @@ import { ref, onMounted } from 'vue'
 import { Upload, Document, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listAttachments, uploadAttachment, deleteAttachment, getAttachmentDownloadUrl, type NoteAttachment } from '@/api/attachment'
+import { getToken } from '@/utils/storage'
 
 const props = defineProps<{ noteId: number }>()
 const attachments = ref<NoteAttachment[]>([])
@@ -69,7 +70,7 @@ async function handleUpload({ file }: { file: File }) {
 
 function handleDownload(att: NoteAttachment) {
   const url = getAttachmentDownloadUrl(props.noteId, att.id)
-  const token = localStorage.getItem('token') || ''
+  const token = getToken() || ''
   const a = document.createElement('a')
   a.href = url + (url.includes('?') ? '&' : '?') + 'token=' + token
   a.download = att.fileName

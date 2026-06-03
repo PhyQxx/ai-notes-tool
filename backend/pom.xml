@@ -25,7 +25,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lombok.version>1.18.38</lombok.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
-        <minio.version>8.5.7</minio.version>
+        <commons-net.version>3.10.0</commons-net.version>
         <jjwt.version>0.12.3</jjwt.version>
         <knife4j.version>4.4.0</knife4j.version>
     </properties>
@@ -69,11 +69,11 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- MinIO -->
+        <!-- FTP -->
         <dependency>
-            <groupId>io.minio</groupId>
-            <artifactId>minio</artifactId>
-            <version>${minio.version}</version>
+            <groupId>commons-net</groupId>
+            <artifactId>commons-net</artifactId>
+            <version>${commons-net.version}</version>
         </dependency>
 
         <!-- JWT (jjwt) -->

@@ -31,7 +31,7 @@ docker-compose up -d             # 启动所有服务（backend:8083, frontend:8
 
 - **MySQL 8.0**（数据库 `ai_notes`，端口 3306）
 - **Redis 7**（端口 6379）
-- **MinIO**（端口 9000/9001，文件存储）
+- **FTP**（文件存储，通过 HTTP URL 访问）
 - **DeepSeek / GLM API Key**（AI 功能，通过环境变量配置）
 
 数据库初始化脚本：`docs/sql/init.sql`

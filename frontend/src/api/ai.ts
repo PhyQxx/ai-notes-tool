@@ -2,6 +2,7 @@
  * AI相关API
  */
 import { http } from '../utils/request';
+import { getToken } from '../utils/storage';
 import type {
   AIChatRequest,
   AIGenerateRequest,
@@ -81,7 +82,7 @@ export function knowledgeChatStream(
   onError: (err: Error) => void,
   signal?: AbortSignal
 ): AbortController | null {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   const controller = new AbortController();
   const effectiveSignal = signal || controller.signal;
 
@@ -144,7 +145,7 @@ export function chatStream(
   onError: (err: Error) => void,
   signal?: AbortSignal
 ): AbortController | null {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   const controller = new AbortController();
   const effectiveSignal = signal || controller.signal;
 

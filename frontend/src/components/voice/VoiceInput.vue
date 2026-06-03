@@ -31,6 +31,7 @@ import { ref, onUnmounted } from 'vue'
 import { Microphone, Loading } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
+import { getToken } from '@/utils/storage'
 
 const { t } = useI18n()
 const emit = defineEmits<{
@@ -97,7 +98,7 @@ async function transcribeAudio(blob: Blob) {
     const formData = new FormData()
     formData.append('file', blob, 'recording.webm')
     
-    const token = localStorage.getItem('token')
+    const token = getToken()
     const response = await fetch('/api/ai/voice/transcribe', {
       method: 'POST',
       headers: { 'Authorization': token ? `Bearer ${token}` : '' },

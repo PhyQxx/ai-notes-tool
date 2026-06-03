@@ -272,6 +272,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useAIStore } from '@/stores/ai';
 import { updateProfile } from '@/api/auth';
 import { http } from '@/utils/request';
+import { getToken } from '@/utils/storage';
 
 const authStore = useAuthStore();
 const aiStore = useAIStore();
@@ -477,7 +478,7 @@ const handleTestAIConfig = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${getToken() || ''}`
       },
       body: JSON.stringify({
         provider: testProvider,

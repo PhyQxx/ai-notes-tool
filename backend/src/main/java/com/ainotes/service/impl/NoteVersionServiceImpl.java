@@ -92,6 +92,7 @@ public class NoteVersionServiceImpl implements NoteVersionService {
         LambdaQueryWrapper<NoteVersion> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(NoteVersion::getNoteId, noteId);
         queryWrapper.orderByDesc(NoteVersion::getVersionNo);
+        queryWrapper.last("LIMIT 1");
         NoteVersion lastVersion = noteVersionMapper.selectOne(queryWrapper);
 
         // 如果没有版本，或者内容变化超过5%，则自动保存

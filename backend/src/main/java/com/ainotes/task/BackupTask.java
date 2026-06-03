@@ -38,7 +38,7 @@ public class BackupTask {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String fileName = "backups/ai_notes_backup_" + timestamp + ".json";
 
-            // 上传到 MinIO
+            // 上传到 FTP
             String url = fileService.uploadFile(data, fileName, "application/json");
             log.info("自动化备份完成, 备份文件: {}, URL: {}", fileName, url);
             

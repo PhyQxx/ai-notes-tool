@@ -23,6 +23,7 @@ import * as Y from 'yjs';
 import { YjsProvider } from '@/utils/yjs-provider';
 import { aiSummarize, extractTasks, ocr } from '@/api/ai';
 import { searchTitles } from '@/api/noteLink';
+import { getToken } from '@/utils/storage';
 
 const props = defineProps<{
   modelValue: string;
@@ -77,8 +78,8 @@ const initEditor = () => {
             duration: 0
           });
           
-          const token = localStorage.getItem('token');
-          const response = await fetch('/api/upload/image', {
+          const token = getToken();
+          const response = await fetch('/api/files/upload/image', {
             method: 'POST',
             headers: { 'Authorization': token ? `Bearer ${token}` : '' },
             body: formData

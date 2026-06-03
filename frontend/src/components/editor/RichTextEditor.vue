@@ -352,7 +352,7 @@ const uploadAndInsertImage = async (file: File) => {
       duration: 0
     });
     
-    const response = await http.post('/upload/image', formData, {
+    const response = await http.post('/files/upload/image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     
@@ -581,7 +581,7 @@ const handleConfirmImage = async () => {
     try {
       const formData = new FormData();
       formData.append('file', imageForm.value.file);
-      const response = await http.post('/upload/image', formData, {
+      const response = await http.post('/files/upload/image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
